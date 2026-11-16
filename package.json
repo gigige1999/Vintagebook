@@ -6,7 +6,8 @@
   "description": "A Victorian-inspired three-dimensional scrapbook atelier",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check js/app.js && node --check js/scene.js && node --check js/textures.js && node --check js/materials.js && node --check js/themes.js"
+    "check": "node --check server.js && node --check js/app.js && node --check js/scene.js && node --check js/textures.js && node --check js/materials.js && node --check js/themes.js && node --check js/desk-loader.js && node --check js/book-model.js && node --check js/boot.js && node --check js/asset-store.js && node --check js/note-type.js && node --check js/material-styles.js && node --check js/sticker-pixels.js && node --check js/sticker-studio.js && node --check js/sticker-frames.js && node --check js/material-library.js",
+    "test": "node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=18"

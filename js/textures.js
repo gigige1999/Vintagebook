@@ -147,6 +147,54 @@ export const PAPERS = [
     description: "灰蓝纸面与淡墨，安静的旧手稿。",
     pattern: "blue",
   },
+  {
+    id: "rice",
+    name: "宣纸素笺",
+    english: "Rice Paper",
+    color: "#eee6d5",
+    description: "云絮般的纤维，留一片清透的空白。",
+    pattern: "rice",
+  },
+  {
+    id: "ledger",
+    name: "古董账簿",
+    english: "Ledger",
+    color: "#e6dcc1",
+    description: "浅棕账线与页眉，记下生活的小事情。",
+    pattern: "ledger",
+  },
+  {
+    id: "postcard",
+    name: "旅途明信片",
+    english: "Postcard",
+    color: "#e7d9c1",
+    description: "邮戳与分栏，写给远方的一句话。",
+    pattern: "postcard",
+  },
+  {
+    id: "dotted",
+    name: "点阵手记",
+    english: "Dotted",
+    color: "#e7e0ce",
+    description: "低调的点阵底纹，自由排版也整齐。",
+    pattern: "dotted",
+  },
+  {
+    id: "marbled",
+    name: "古典云纹",
+    english: "Marbled",
+    color: "#dcd7c1",
+    description: "灰绿晕染的云纹，仿佛古书的内衬。",
+    pattern: "marbled",
+  },
+  {
+    id: "pressed",
+    name: "押花书页",
+    english: "Pressed Flowers",
+    color: "#ece2ce",
+    description: "页角留一枝褪色花草，恰到好处。",
+    pattern: "pressed",
+  },
 ];
 const cache = new Map();
 export function seeded(seed = 1) {
@@ -455,6 +503,101 @@ export function paperTexture(id, w = 600, h = 840) {
       x.stroke();
     }
     x.strokeRect(33, 33, w - 66, h - 66);
+  }
+  if (p.pattern === "rice") {
+    const r = seeded(104);
+    x.strokeStyle = "#86785c22";
+    x.lineWidth = 0.7;
+    for (let i = 0; i < 180; i++) {
+      const xx = r() * w, yy = r() * h;
+      x.beginPath(); x.moveTo(xx, yy); x.quadraticCurveTo(xx + 7, yy - 2, xx + 15 + r() * 15, yy + 3); x.stroke();
+    }
+    x.strokeStyle = "#8e83642c";
+    x.strokeRect(27, 27, w - 54, h - 54);
+  }
+  if (p.pattern === "ledger") {
+    x.fillStyle = "#6c695559";
+    x.textAlign = "center"; x.font = "17px Georgia";
+    x.fillText("ACCOUNTS   &   REMEMBRANCES", w / 2, 54);
+    x.font = "italic 11px Georgia";
+    x.fillText("No.         DATE                     PARTICULARS                              FOLIO", w / 2, 82);
+    x.strokeStyle = "#90887059";
+    x.lineWidth = 1;
+    for (let yy = 100; yy < h - 30; yy += 36) {
+      x.beginPath(); x.moveTo(30, yy); x.lineTo(w - 28, yy); x.stroke();
+    }
+    for (const xx of [45, 118, w - 155, w - 58]) {
+      x.beginPath(); x.moveTo(xx, 91); x.lineTo(xx, h - 32); x.stroke();
+    }
+    x.strokeRect(30, 30, w - 58, h - 62);
+  }
+  if (p.pattern === "postcard") {
+    x.strokeStyle = "#9b80644f";
+    x.lineWidth = 1.1;
+    x.strokeRect(29, 29, w - 58, h - 58);
+    x.setLineDash([3, 4]);
+    x.strokeRect(w - 127, 48, 76, 83);
+    x.setLineDash([]);
+    x.font = "italic 26px Georgia";
+    x.fillStyle = "#8b725c7a";
+    x.fillText("Carte Postale", 51, 85);
+    x.font = "11px Georgia";
+    x.fillText("CORRESPONDENCE", 53, 109);
+    x.strokeStyle = "#8773635b";
+    x.beginPath(); x.moveTo(w * 0.52, 158); x.lineTo(w * 0.52, h - 75); x.stroke();
+    for (let yy = 290; yy < h - 90; yy += 55) {
+      x.beginPath(); x.moveTo(w * 0.56, yy); x.lineTo(w - 68, yy); x.stroke();
+    }
+    x.beginPath(); x.ellipse(w - 89, 87, 23, 23, 0, 0, 7); x.stroke();
+    x.font = "8px Georgia"; x.fillText("POSTE · 1898", w - 110, 88);
+  }
+  if (p.pattern === "dotted") {
+    x.fillStyle = "#78745e58";
+    for (let yy = 35; yy < h - 30; yy += 21)
+      for (let xx = 35; xx < w - 30; xx += 21) {
+        x.beginPath(); x.arc(xx, yy, 1.05, 0, Math.PI * 2); x.fill();
+      }
+  }
+  if (p.pattern === "marbled") {
+    const r = seeded(731);
+    const wash = x.createLinearGradient(0, 0, w, h);
+    wash.addColorStop(0, "#71877925"); wash.addColorStop(0.43, "#e9dec12e"); wash.addColorStop(1, "#79887332");
+    x.fillStyle = wash; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 26; i++) {
+      const xx = r() * w, yy = r() * h;
+      x.beginPath();
+      x.moveTo(xx - 135, yy - 12);
+      x.bezierCurveTo(xx - 45, yy - 55, xx + 10, yy + 76, xx + 130, yy + 6);
+      x.strokeStyle = i % 3 ? "#71867628" : "#fdf0d24d";
+      x.lineWidth = 6 + r() * 12; x.stroke();
+      x.strokeStyle = "#677f772a"; x.lineWidth = 1; x.stroke();
+    }
+    x.strokeStyle = "#766d5959"; x.lineWidth = 2;
+    x.strokeRect(24, 24, w - 48, h - 48);
+    x.lineWidth = 0.6; x.strokeRect(32, 32, w - 64, h - 64);
+  }
+  if (p.pattern === "pressed") {
+    x.strokeStyle = "#aa988052";
+    x.strokeRect(29, 28, w - 58, h - 56);
+    x.font = "italic 14px Georgia";
+    x.fillStyle = "#88856997";
+    x.fillText("BOTANICA  ·  No. 06", 48, 61);
+    x.save();
+    x.translate(w - 86, h - 110);
+    x.scale(1.35, 1.35);
+    x.strokeStyle = "#657350aa"; x.lineWidth = 2.2;
+    x.beginPath(); x.moveTo(0, 35); x.bezierCurveTo(-15, -12, 9, -52, 1, -111); x.stroke();
+    for (let i = 0; i < 5; i++) {
+      const side = i % 2 ? -1 : 1, yy = 2 - i * 20;
+      leaf(x, 0, yy, 25, side, i % 2 ? "#87927665" : "#9ba38971");
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = i * Math.PI * 2 / 5;
+      x.beginPath(); x.ellipse(1 + Math.cos(a) * 8, -112 + Math.sin(a) * 8, 8, 5, a, 0, Math.PI * 2);
+      x.fillStyle = "#b2939773"; x.fill();
+    }
+    x.beginPath(); x.arc(1, -112, 3, 0, Math.PI * 2); x.fillStyle = "#b9aa7373"; x.fill();
+    x.restore();
   }
   const edge = x.createLinearGradient(0, 0, w, 0);
   edge.addColorStop(0, "#8d6e3420");

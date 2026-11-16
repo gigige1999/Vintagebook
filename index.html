@@ -4,16 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ece5d8" />
-    <title>拾光书室 · The Keepsake Atelier</title>
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='5' width='44' height='54' rx='4' fill='%2354503b'/%3E%3Crect x='17' y='12' width='30' height='40' rx='2' fill='none' stroke='%23c1a474'/%3E%3Cpath d='M25 36q7-18 14-9q-5 11-14 9' fill='%23c1a474'/%3E%3C/svg%3E"
-    />
+    <link rel="icon" type="image/svg+xml" href="./assets/notebook-icon.svg" />
+    <link rel="apple-touch-icon" href="./assets/notebook-icon.svg" />
+    <title>复古手帐 · The Keepsake Atelier</title>
     <link rel="stylesheet" href="./css/style.css" />
     <link rel="stylesheet" href="./css/atelier.css" />
-    <script type="importmap">
-      { "imports": { "three": "./vendor/three.module.js" } }
-    </script>
+    <link rel="stylesheet" href="./css/refinement.css" />
+    <link rel="stylesheet" href="./css/sticker-studio.css" />
+    <link rel="preload" as="image" href="./assets/textures/wood.jpg" />
   </head>
   <body>
     <svg
@@ -22,10 +20,18 @@
       aria-hidden="true"
     >
       <defs>
-        <symbol id="i-book" viewBox="0 0 24 24">
-          <path
-            d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"
-          />
+        <symbol id="i-book" viewBox="0 0 64 64">
+          <path d="M13 9h36q5 0 5 5v39q0 3-4 3H13q-4 0-4-4V13q0-4 4-4Z" fill="#866a49" stroke="#473d30" stroke-width="2"/>
+          <path d="M14 11h33q5 0 5 5v37H14q-3 0-3-4V15q0-4 3-4Z" fill="#56694e" stroke="#354639" stroke-width="1.5"/>
+          <path d="M16 14h30q3 0 3 3v33H16Z" fill="none" stroke="#bfac74" stroke-width="1.3"/>
+          <path d="M19 18h24v28H19Z" fill="none" stroke="#a9966e" stroke-width=".6" opacity=".7"/>
+          <path d="M12 10h6v44h-6Z" fill="#34453d" stroke="#304136" stroke-width="1"/>
+          <path d="M15 13v38" stroke="#bda779" stroke-width="1.1"/>
+          <path d="M10 50q1 4 5 4h37" fill="none" stroke="#f1dec0" stroke-width="2.6" stroke-linecap="round"/>
+          <path d="M33 25c-5 4-4 9 0 12 4-3 5-8 0-12Zm0 7q-4-4-7-2 1 5 7 7m0-5q4-4 7-2-1 5-7 7M33 37v6" fill="none" stroke="#d6c192" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M32 18l1-2 1 2-1 2Zm0 29 1-2 1 2-1 2Z" fill="#d9c493"/>
+          <path d="M49 21h4v25h-4Z" fill="#ae8d62"/>
+          <path d="M49 46v10l2-2 2 2V46Z" fill="#9e6e58"/>
         </symbol>
         <symbol id="i-arrow" viewBox="0 0 24 24">
           <path d="M4 12h16m-6-6 6 6-6 6" />
@@ -65,14 +71,14 @@
 
     <section id="home" class="home">
       <header class="home-header">
-        <a class="brand" href="./" aria-label="拾光书室首页"
+        <a class="brand" href="./" aria-label="复古手帐首页"
           ><span class="brand-icon"
             ><svg><use href="#i-book" /></svg></span
-          ><span>拾光书室<small>THE KEEPSAKE ATELIER</small></span></a
+          ><span>复古手帐<small>THE KEEPSAKE ATELIER</small></span></a
         >
         <span class="header-note">一本书，安放你的碎片时光。</span>
         <button id="resume-btn" class="text-button hidden">
-          继续上次的手账 <span>↗</span>
+          继续上次的手帐 <span>↗</span>
         </button>
       </header>
       <div class="desk-introduction">
@@ -87,13 +93,81 @@
       <div class="desk-stage" id="desk-stage">
         <canvas
           id="desk-canvas"
-          aria-label="摆着五本复古手账与古董物件的三维书桌"
+          aria-label="摆着五本复古手帐与古董物件的三维书桌"
         ></canvas>
+        <div id="desk-fallback" class="desk-fallback" aria-label="复古书本选择">
+          <button
+            class="fallback-book"
+            data-cover="0"
+            style="--binding: #722f35; --tilt: -8deg"
+          >
+            <img
+              src="./assets/textures/cover-wine.jpg"
+              alt="绯红往事"
+              width="192"
+              height="270"
+            /><span>绯红往事</span>
+          </button>
+          <button
+            class="fallback-book"
+            data-cover="1"
+            style="--binding: #304858; --tilt: -4deg"
+          >
+            <img
+              src="./assets/textures/cover-blue.jpg"
+              alt="午夜诗集"
+              width="192"
+              height="270"
+            /><span>午夜诗集</span>
+          </button>
+          <button
+            class="fallback-book"
+            data-cover="2"
+            style="--binding: #465242; --tilt: 0deg"
+          >
+            <img
+              src="./assets/textures/cover-green.jpg"
+              alt="森林来信"
+              width="192"
+              height="270"
+            /><span>森林来信</span>
+          </button>
+          <button
+            class="fallback-book"
+            data-cover="3"
+            style="--binding: #ae8580; --tilt: 4deg"
+          >
+            <img
+              src="./assets/textures/cover-pink.jpg"
+              alt="蔷薇日记"
+              width="192"
+              height="270"
+            /><span>蔷薇日记</span>
+          </button>
+          <button
+            class="fallback-book"
+            data-cover="4"
+            style="--binding: #302d2e; --tilt: 8deg"
+          >
+            <img
+              src="./assets/textures/cover-black.jpg"
+              alt="秘藏之书"
+              width="192"
+              height="270"
+            /><span>秘藏之书</span>
+          </button>
+        </div>
         <div class="stage-vignette"></div>
         <div class="desk-caption">
           <span>THE WRITING DESK</span><span>Est. 1893</span>
         </div>
-        <div id="scene-loading" class="scene-loading">正在铺好书桌…</div>
+        <div id="scene-loading" class="scene-loading" role="status">
+          正在准备书桌，请稍候…
+        </div>
+      </div>
+      <div class="render-settings">
+        <span id="render-status" role="status">自动光影 · 正在加载</span>
+        <button id="retry-scene" class="hidden">重试光影</button>
       </div>
       <div class="book-selector">
         <div class="selector-heading">
@@ -115,14 +189,14 @@
         <button id="back-home" class="brand brand-button" title="回到书桌">
           <span class="brand-icon"
             ><svg><use href="#i-book" /></svg></span
-          ><span>拾光书室<small>THE KEEPSAKE ATELIER</small></span>
+          ><span>复古手帐<small>THE KEEPSAKE ATELIER</small></span>
         </button>
         <div class="journal-title">
           <input
             id="journal-name"
-            aria-label="手账名称"
+            aria-label="手帐名称"
             maxlength="32"
-            value="我的拾光手记"
+            value="我的复古手帐"
           /><span id="save-status">已保存</span>
         </div>
         <div class="header-actions">
@@ -162,8 +236,17 @@
           class="category-tabs"
           aria-label="素材分类"
         ></div>
+        <label class="material-style-label" for="material-style">收藏风格
+          <select id="material-style" aria-label="素材风格"></select>
+        </label>
         <div id="material-grid" class="material-grid"></div>
-        <button id="upload-btn" class="upload-button">
+        <button id="material-more" class="material-more hidden">再展开更多藏品</button>
+        <button id="sticker-upload-btn" class="upload-button sticker-upload-button" title="上传图片制作贴纸">
+          <svg><use href="#i-plus" /></svg>
+          <span>制作自己的贴纸<small>抠图 · 裁剪 · 滤镜 · 蒙版</small></span>
+          <span>↗</span>
+        </button>
+        <button id="upload-btn" class="upload-button" title="上传照片并选择相框">
           <svg><use href="#i-upload" /></svg
           ><span>放入自己的照片<small>让回忆有一个位置</small></span
           ><span>+</span>
@@ -223,8 +306,10 @@
               <svg><use href="#i-rotate" /></svg></button
             ><button data-action="smaller" title="缩小">−</button
             ><button data-action="larger" title="放大">+</button
-            ><button data-action="forward" title="移到最上层">
-              <svg><use href="#i-layer" /></svg></button
+            ><button data-action="front" title="移到最上层">置顶</button
+            ><button data-action="up" title="上移一层">上移</button
+            ><button data-action="down" title="下移一层">下移</button
+            ><button data-action="back" title="移到最下层">置底</button
             ><button data-action="copy" title="复制">复制</button
             ><button data-action="delete" title="删除">
               <svg><use href="#i-trash" /></svg>
@@ -265,7 +350,7 @@
           <svg><use href="#i-close" /></svg>
         </button>
       </form>
-      <div class="eyebrow">THE PAPER LIBRARY · 12 TEXTURES</div>
+      <div class="eyebrow">THE PAPER LIBRARY · 18 TEXTURES</div>
       <h2 id="paper-title">故事，落在什么纸上？</h2>
       <p>摸不到的纸，也想认真做出它的温度。</p>
       <div id="paper-options" class="paper-options"></div>
@@ -282,7 +367,7 @@
           <svg><use href="#i-close" /></svg>
         </button>
       </form>
-      <div class="eyebrow">THE PHOTO CABINET · 9 KEEPSAKE FRAMES</div>
+      <div class="eyebrow">THE PHOTO CABINET · 12 KEEPSAKE FRAMES</div>
       <h2 id="photo-dialog-title">为回忆，挑一个相框。</h2>
       <p>先选一个模板，再放入自己的照片；以后也可以随时换框。</p>
       <div
@@ -308,16 +393,75 @@
       </form>
       <div class="eyebrow">A NOTE TO REMEMBER</div>
       <h2>写下一点心情</h2>
+      <div id="note-fonts" class="note-fonts" aria-label="便签字体选择"></div>
+      <div class="note-live-preview"><img id="note-preview" alt="便签实时预览"></div>
       <textarea
         id="note-text"
         maxlength="160"
         rows="5"
         placeholder="今天值得记住的事……"
-        aria-label="手写条文字"
+        aria-label="便签文字"
       ></textarea
       ><button id="confirm-text" class="primary-button">
         留在纸上 <svg><use href="#i-check" /></svg>
       </button>
+    </dialog>
+    <dialog id="sticker-dialog" class="sticker-dialog" aria-labelledby="sticker-title">
+      <form method="dialog">
+        <button class="dialog-close icon-button" aria-label="关闭贴纸工作室"><svg><use href="#i-close" /></svg></button>
+      </form>
+      <div class="sticker-heading">
+        <div><div class="eyebrow">THE STICKER STUDIO · YOUR OWN COLLECTION</div><h2 id="sticker-title">把喜欢的，剪成一枚贴纸。</h2></div>
+        <button id="choose-sticker-image" class="photo-upload-choice"><svg><use href="#i-upload" /></svg><span>选择图片</span></button>
+      </div>
+      <p class="sticker-lead">两步就好：先抠干净背景，再挑滤镜、形状和边框。原图会保留，随时可以回来改。</p>
+      <input id="sticker-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+      <div class="studio-steps" role="tablist" aria-label="制作步骤">
+        <button class="studio-step active" data-step="cut" role="tab" aria-selected="true"><b>01</b>抠图修边</button>
+        <button class="studio-step" data-step="deco" role="tab" aria-selected="false"><b>02</b>装饰贴纸</button>
+      </div>
+      <div class="sticker-layout" data-step="cut">
+        <div class="sticker-editor-column">
+          <div class="studio-section-label"><span>01 · 去背景与裁剪</span><small id="crop-size">尚未选择图片</small></div>
+          <div class="sticker-stage"><canvas id="cutout-canvas" width="400" height="320" aria-label="图片裁剪与修边画布"></canvas><div id="sticker-empty">上传一张图片开始创作<br>JPG / PNG / WebP · 最大 20 MB</div></div>
+          <div id="sticker-tools" class="sticker-tools" aria-label="图片处理工具">
+            <button data-tool="crop" class="active" aria-pressed="true">矩形裁剪</button><button data-tool="wand-keep" aria-pressed="false">点选主体</button><button data-tool="wand-remove" aria-pressed="false">点掉背景</button><button data-tool="erase" aria-pressed="false">擦除</button><button data-tool="restore" aria-pressed="false">涂回</button>
+          </div>
+          <div class="cutout-options">
+            <label>背景容差 <span>低 → 高</span><input id="cutout-tolerance" type="range" min="5" max="100" value="32" /></label>
+            <label>笔刷大小 <span>细 → 粗</span><input id="cutout-brush" type="range" min="3" max="80" value="24" /></label>
+          </div>
+          <div class="cutout-actions"><button id="remove-background">一键去背景</button><button id="cutout-undo" disabled>撤销一步</button><button id="reset-crop">重置裁剪</button><button id="reset-cutout">重置全部</button></div>
+          <details class="studio-more">
+            <summary>怎么抠得更干净？</summary>
+            <p class="studio-fine">「一键去背景」从画面四边开始识别，纯色或浅色背景效果最好。「点选主体」点一下对象，只留下和它相连的部分；「点掉背景」点一下背景，去掉相近颜色的整块。剩下的边缘用「擦除」擦掉，擦多了用「涂回」补上（只影响蒙版，不会损伤原图）。</p>
+          </details>
+          <button class="studio-next" data-go="deco">下一步 · 加装饰</button>
+        </div>
+        <div class="sticker-result-column">
+          <div class="studio-section-label"><span>02 · 滤镜与蒙版</span><small>棋盘格代表透明区域</small></div>
+          <div class="sticker-result-stage"><canvas id="sticker-result" width="300" height="250" aria-label="透明贴纸结果预览"></canvas></div>
+          <div id="sticker-adjustments" class="sticker-adjustments">
+            <label>滤镜<select data-setting="filter"><option value="original">原图</option><option value="sepia">复古棕褐</option><option value="warm">暖色胶片</option><option value="fade">柔光褪色</option><option value="cream">奶油暖调</option><option value="rose">玫瑰粉调</option><option value="mint">薄荷冷调</option><option value="vivid">鲜亮胶片</option><option value="silver">银盐灰</option><option value="noir">暗调</option><option value="mono">黑白</option><option value="blue">蓝调</option><option value="violet">暮紫</option><option value="honey">蜂蜜日光</option><option value="porcelain">瓷白柔光</option><option value="sage">鼠尾草</option><option value="amber">琥珀胶片</option><option value="dustyrose">旧玫瑰</option><option value="cinema">暮光电影</option><option value="matte">雾面奶茶</option></select></label>
+            <label>形状蒙版<select data-setting="shape"><option value="none">无蒙版</option><option value="circle">圆形</option><option value="oval">竖椭圆</option><option value="rounded">圆角</option><option value="squircle">超圆角</option><option value="arch">拱形</option><option value="dome">穹顶</option><option value="heart">心形</option><option value="flower">花瓣</option><option value="star">星形</option><option value="capsule">胶囊</option><option value="hex">六边形</option><option value="triangle">三角</option><option value="drop">水滴</option><option value="bookmark">书签</option><option value="ticket">票券</option><option value="wave">波浪</option><option value="torn">撕纸</option><option value="pennant">燕尾旗</option><option value="bubble">对话气泡</option></select></label>
+            <label class="wide">装饰边框<select id="shell-templates" data-setting="shell"></select></label>
+            <label>描边效果<select data-setting="outlineStyle"><option value="sticker">贴纸白边</option><option value="solid">单色实线</option><option value="double">双色包边</option><option value="dashed">缝线虚线</option><option value="glow">柔光描边</option><option value="shadow">投影描边</option><option value="gilded">古金包边</option><option value="pearl">珍珠光边</option><option value="ink">复古墨线</option><option value="none">不加描边</option></select></label>
+            <label>描边粗细<input data-setting="outline" type="range" min="0" max="16" value="0" /><output>0 px</output></label>
+            <label>描边颜色<input id="sticker-border-color" type="color" value="#fff8e8" /></label>
+            <details class="studio-more wide">
+              <summary>色彩微调（可不调）</summary>
+              <div class="studio-tune">
+                <label>亮度<input data-setting="brightness" type="range" min="30" max="180" value="100" /><output>100%</output></label>
+                <label>对比度<input data-setting="contrast" type="range" min="30" max="180" value="100" /><output>100%</output></label>
+                <label>饱和度<input data-setting="saturation" type="range" min="0" max="180" value="100" /><output>100%</output></label>
+              </div>
+            </details>
+          </div>
+          <button class="studio-next ghost" data-go="cut">返回修边</button>
+          <p class="studio-fine">预览是缩小图，贴入时会用高清原图重新渲染。贴入后双击还能继续改。</p>
+        </div>
+      </div>
+      <div class="sticker-dialog-footer"><span id="sticker-status" role="status">选择一张图片开始</span><button id="commit-sticker" class="primary-button" disabled>贴入书页 <svg><use href="#i-check" /></svg></button></div>
     </dialog>
     <dialog id="about-dialog" class="about-dialog">
       <form method="dialog">
@@ -328,17 +472,22 @@
       <div class="eyebrow">WELCOME TO THE ATELIER</div>
       <h2>给慢下来的日子，<br />留一个位置。</h2>
       <p>
-        拾光书室是一张安静的复古书桌。挑选封皮与纸张，把花、邮票、手写条和自己的照片，贴成只属于你的手记。
+        复古手帐是一张安静的复古书桌。挑选封皮与纸张，把花、邮票、手写条和自己的照片，贴成只属于你的手记。
       </p>
       <p>
-        点击或拖入素材；选中后可旋转、缩放、复制或调整层级。双击手写条编辑文字，双击照片框放入照片。添加书页后，可在底部翻页。
+        点击或拖入素材；选中后可旋转、缩放、复制，并用「置顶／上移／下移／置底」调整叠放顺序。双击便签可选择字体；日期条可改日期，日记便签支持长篇文字。用「制作自己的贴纸」上传图片，正选魔棒可框出主体，再套上相框、日历、便签、胶片、勋章、怀表等装饰外壳，贴入后仍可双击重新编辑。素材抽屉覆盖哥特、洛可可、维多利亚、新艺术、珍奇柜与巴洛克风格，每类至少 30 件。立体古物为带高光层次的平面贴图。
       </p>
       <p class="about-fine">
-        创作仅保存在当前浏览器本地，不会上传服务器。清除浏览器数据会丢失手账，请用「珍藏此页」导出留存。
+        创作仅保存在当前浏览器本地，不会上传服务器。清除浏览器数据会丢失手帐，请用「珍藏此页」导出留存。
       </p>
       <button id="close-about" class="primary-button">知道了</button>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js"></script>
+    <noscript
+      ><p class="boot-warning">
+        请启用 JavaScript 后使用书桌与拼贴功能。
+      </p></noscript
+    >
+    <script defer src="./js/boot.js"></script>
   </body>
 </html>

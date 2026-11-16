@@ -13,11 +13,9 @@ export function escape(s) {
   );
 }
 export function svgUrl(body, w = 300, h = 400) {
-  return (
-    "data:image/svg+xml;charset=utf-8," +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${defs}${body}</svg>`,
-    )
+  const clean = body.replace(/\sfilter="url\(#(?:paper|ink)\)"/g, '');
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w * 4}" height="${h * 4}" viewBox="0 0 ${w} ${h}">${defs}${clean}</svg>`
   );
 }
 const text = (s, x, y, size = 12, color = "#695944", style = "") =>
@@ -232,21 +230,40 @@ export const PHOTO_FRAMES = [
     name: "胶片记忆",
     description: "齿孔与深色片框，像一格旧电影。",
   },
+  { id: "arcana-indigo", name: "午夜星象相框", description: "靛蓝封面、古金星图与私藏照片。" },
+  { id: "arcana-rose", name: "玫瑰暮色相框", description: "复古粉紫天空与银金色装饰。" },
+  { id: "arcana-ivory", name: "月光手稿相框", description: "奶油色书封与月相烫金花纹。" },
 ];
+const magicFrameColors = {
+  "arcana-indigo": { base: "#283754", trim: "#cfb275", glow: "#91a5cf", title: "THE STAR ATLAS" },
+  "arcana-rose": { base: "#785873", trim: "#e2c59c", glow: "#e9b7bb", title: "A DUSK MEMORY" },
+  "arcana-ivory": { base: "#e9dfc6", trim: "#8a744e", glow: "#c4b79b", title: "MOONLIT NOTES" },
+};
+function magicFrameDetails(frame) {
+  const { base, trim, glow, title } = magicFrameColors[frame];
+  const stars = Array.from({ length: 28 }, (_, i) => {
+    const x = 21 + ((i * 79) % 258), y = 34 + ((i * 131) % 284);
+    return `<circle cx="${x}" cy="${y}" r="${i % 5 ? 1.1 : 2.2}" fill="${trim}" opacity=".76"/>`;
+  }).join("");
+  const corners = [[26, 26, 1, 1], [274, 26, -1, 1], [26, 324, 1, -1], [274, 324, -1, -1]].map(([x, y, sx, sy]) => `<g transform="translate(${x} ${y}) scale(${sx} ${sy})" fill="none" stroke="${trim}" stroke-width="1.8"><path d="M0 54Q0 0 54 0M5 43Q18 23 35 23Q27 39 12 28M15 8Q32 8 37 20Q20 23 15 8"/><circle cx="5" cy="5" r="2" fill="${trim}"/></g>`).join("");
+  return { base, trim, glow, title, stars, corners };
+}
 export function photoImage(photo = "", frame = "polaroid") {
   const w = 300,
     h = 350;
   if (!PHOTO_FRAMES.some((f) => f.id === frame)) frame = "polaroid";
   let inner =
-    frame === "ornate"
+    magicFrameColors[frame]
+      ? 42
+      : frame === "ornate"
       ? 30
       : frame === "film"
         ? 38
         : frame === "lace" || frame === "botanical"
           ? 35
           : 20;
-  let top = frame === "postcard" ? 49 : inner;
-  let bottom = frame === "polaroid" || frame === "postcard" ? 66 : inner;
+  let top = magicFrameColors[frame] ? 93 : frame === "postcard" ? 49 : inner;
+  let bottom = magicFrameColors[frame] ? 66 : frame === "polaroid" || frame === "postcard" ? 66 : inner;
   let bw = w - inner * 2,
     bh = h - top - bottom;
   let s = '<g filter="url(#paper)">';
@@ -256,7 +273,10 @@ export function photoImage(photo = "", frame = "polaroid") {
       : frame === "black" || frame === "film"
         ? "#423e36"
         : "#e6ddc9";
-  if (frame === "oval") {
+  if (magicFrameColors[frame]) {
+    const { base, trim, glow, stars, corners } = magicFrameDetails(frame);
+    s += `<rect x="9" y="7" width="282" height="336" rx="4" fill="${base}" stroke="${trim}" stroke-width="2"/><rect x="16" y="14" width="268" height="322" rx="2" fill="none" stroke="${trim}" opacity=".85"/><rect x="24" y="22" width="252" height="306" fill="none" stroke="${trim}" opacity=".7" stroke-width=".7"/><path d="M119 41Q150 14 181 41" fill="none" stroke="${trim}" stroke-width="1.7"/><circle cx="150" cy="48" r="20" fill="none" stroke="${trim}"/><circle cx="158" cy="44" r="18" fill="${base}"/><path d="M150 72v8m-6-4h12" stroke="${trim}"/><path d="M64 305q86 33 172 0" fill="none" stroke="${trim}" stroke-width="1.2"/>${stars}${corners}<rect x="37" y="88" width="226" height="204" fill="${glow}" opacity=".47" stroke="${trim}" stroke-width="3"/>`;
+  } else if (frame === "oval") {
     inner = 48;
     top = 42;
     bw = 204;
@@ -308,6 +328,10 @@ export function photoImage(photo = "", frame = "polaroid") {
   else
     s += `<path d="M40 226 119 133 176 189 220 151 270 225Z" fill="#9da28e" opacity=".65"/><circle cx="211" cy="98" r="22" fill="#e3d6b9"/>${text("your little memory", 150, 256, 14, "#827b66", 'text-anchor="middle" font-style="italic"')}`;
   s += "</g>";
+  if (magicFrameColors[frame]) {
+    const { trim, base, title } = magicFrameDetails(frame);
+    s += `<rect x="40" y="91" width="220" height="198" fill="none" stroke="${trim}" stroke-width="3"/><rect x="45" y="96" width="210" height="188" fill="none" stroke="${trim}" opacity=".65"/><path d="M96 302h28m52 0h28" stroke="${trim}" stroke-width="1.3"/>${text(title, 150, 312, 12, trim, 'text-anchor="middle" letter-spacing="1.5"')}${text("THE KEEPSAKE SOCIETY · 1897", 150, 328, 6.5, trim, 'text-anchor="middle" letter-spacing="1"')}<circle cx="150" cy="303" r="2" fill="${base}"/>`;
+  }
   if (frame === "polaroid" || frame === "postcard")
     s += text(
       frame === "polaroid" ? "a moment to keep" : "a postcard to myself",
@@ -1116,7 +1140,7 @@ for (const frame of PHOTO_FRAMES.filter(
     300,
     350,
     55,
-    { frame: frame.id, dimensional: frame.id === "oval" },
+    { frame: frame.id, dimensional: frame.id === "oval", ...(magicFrameColors[frame.id] ? { style: "arcana" } : {}) },
   );
 add("tape-blue", "雾蓝半透明胶带", "tape", tape("#a9b9bd"), 300, 72, 51);
 add(
@@ -1260,10 +1284,195 @@ add(
   33,
   { dimensional: true },
 );
+/* ---------- 花与叶补充：松果、果实与小枝 ---------- */
+function pinecone() {
+  let s = `<path d="M150 34q-6 22 0 44" stroke="#6d7452" stroke-width="5" fill="none"/>${leaf(154, 74, -34, 0.42)}`;
+  const rows = 11;
+  for (let row = 0; row < rows; row++) {
+    const t = row / (rows - 1), y = 84 + t * 252;
+    const half = 10 + 62 * Math.sin(Math.PI * (0.14 + t * 0.76));
+    const count = Math.max(2, Math.round(half / 11));
+    const scale = 0.62 + 0.5 * Math.sin(Math.PI * (0.18 + t * 0.74));
+    for (let i = 0; i <= count; i++) {
+      const x = 150 - half + (2 * half * i) / count;
+      s += `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${(14 * scale).toFixed(1)}" ry="${(12 * scale).toFixed(1)}" transform="rotate(${((i / count - 0.5) * 46).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="${row % 2 ? "#8a6d49" : "#735838"}" stroke="#57412b" stroke-width="1"/>`;
+    }
+  }
+  return `<g filter="url(#ink)">${s}</g>`;
+}
+function acorn() {
+  const hatch = [0, 1, 2, 3]
+    .map((i) => `<path d="M${92 + i * 9} ${134 + i * 6}q58 -16 ${116 - i * 18} 0"/>`)
+    .join("");
+  return `<g filter="url(#ink)"><path d="M150 120q-56 0-64 42h128q-8-42-64-42Z" fill="#93714a" stroke="#5f472c" stroke-width="2"/><path d="M86 162q2 96 64 132 62-36 64-132Z" fill="#b48d58" stroke="#7e5e39" stroke-width="2"/><path d="M98 176q-4 78 52 114" stroke="#dcbd8f" stroke-width="4" fill="none" opacity=".6"/><path d="M150 122V96" stroke="#6c5a3c" stroke-width="6"/><g fill="none" stroke="#5f472c" stroke-width="1.4" opacity=".5">${hatch}</g></g>`;
+}
+function mushroom() {
+  return `<g filter="url(#ink)"><path d="M132 210q-4 62 6 106q2 12 12 12t12-12q8-46 4-106Z" fill="#e2d6ba" stroke="#b6a684" stroke-width="2"/><path d="M60 208q6-104 90-104t90 104q-14 12-38 12-14-24-30-6-16-22-30 4-16-26-30 2-14-4-16-8Z" fill="#a8876a" stroke="#75604a" stroke-width="2.4"/><g fill="#c8ad8c" opacity=".9"><circle cx="106" cy="160" r="9"/><circle cx="160" cy="140" r="12"/><circle cx="198" cy="176" r="7"/></g><path d="M118 216q32 12 64 0" stroke="#9a8a6c" stroke-width="2" fill="none"/><path d="M132 236h36" stroke="#b6a684" stroke-width="2"/></g>`;
+}
+function berryBranch() {
+  let s = `<path d="M150 380q-8-120 6-236q2-38 22-58" stroke="#6f7550" stroke-width="4" fill="none"/>`;
+  s += leaf(146, 300, -50, 0.5) + leaf(158, 250, 62, 0.45) + leaf(150, 196, -44, 0.38);
+  const berries = [[176, 120], [196, 148], [160, 108], [206, 112], [182, 84], [144, 138], [212, 168]];
+  berries.forEach(([x, y]) => {
+    s += `<circle cx="${x}" cy="${y}" r="16" fill="#9d5b52" stroke="#76413c" stroke-width="1.4"/><circle cx="${x - 5}" cy="${y - 6}" r="4" fill="#c99086" opacity=".8"/>`;
+  });
+  return `<g filter="url(#ink)">${s}</g>`;
+}
+function clover() {
+  let s = `<path d="M150 372q-6-90 0-146" stroke="#727a53" stroke-width="4" fill="none"/>`;
+  for (let i = 0; i < 3; i++) {
+    const a = i * 120 - 90;
+    s += `<g transform="rotate(${a} 150 226)"><path d="M150 226q-40-6-42-42q-2-34 30-34q32 0 30 34q-2 36-18 42Z" fill="#88936a" stroke="#66714c" stroke-width="1.6"/><path d="M150 226v-58" stroke="#c9cfa4" stroke-width="1.4"/></g>`;
+  }
+  return `<g filter="url(#ink)">${s}<circle cx="150" cy="226" r="7" fill="#76815a"/></g>`;
+}
+function cotton() {
+  let s = "";
+  const stems = [[-1, 60], [0, 20], [1, 78]];
+  stems.forEach(([dir, h]) => {
+    const topY = 330 - h - 120;
+    s += `<path d="M150 372q${dir * 28} -120 ${dir * 54} ${-h}" stroke="#8a7a5c" stroke-width="3" fill="none"/>`;
+    s += `<g fill="#efe9d9" stroke="#c3b79c" stroke-width="1"><circle cx="${150 + dir * 54}" cy="${topY}" r="26"/><circle cx="${150 + dir * 54 - 18}" cy="${topY + 14}" r="18"/><circle cx="${150 + dir * 54 + 18}" cy="${topY + 12}" r="17"/><circle cx="${150 + dir * 54}" cy="${topY - 20}" r="16"/></g>`;
+    s += `<path d="M${144 + dir * 54} ${topY + 30}l${dir * 4} 30" stroke="#8a7a5c" stroke-width="2"/>`;
+  });
+  return `<g filter="url(#ink)">${s}</g>`;
+}
+function wheat() {
+  let s = `<path d="M150 386q-4-140 2-268" stroke="#8d8259" stroke-width="3" fill="none"/>`;
+  for (let i = 0; i < 11; i++) {
+    const y = 104 + i * 21, w = 17 - i * 0.5;
+    for (const dir of [-1, 1]) {
+      const cx = 150 + dir * (w + 3);
+      s += `<ellipse cx="${cx}" cy="${y}" rx="${w}" ry="7" transform="rotate(${dir * 30} ${cx} ${y})" fill="${i % 2 ? "#b7a878" : "#a89a6b"}" stroke="#8a7d52" stroke-width=".8"/><path d="M${cx + dir * w} ${y - 3}l${dir * (10 + i)} -${9 + i * 1.2}" stroke="#cbbd90" stroke-width="1.1"/>`;
+    }
+  }
+  s += `<path d="M150 104q-6-26 0-46" stroke="#b7a878" stroke-width="4" fill="none"/>`;
+  return `<g filter="url(#ink)">${s}</g>`;
+}
+function driedBouquet() {
+  let s = "";
+  const stems = [[-58, 68], [-30, 40], [2, 22], [32, 48], [58, 76]];
+  stems.forEach(([dx, h], i) => {
+    s += `<path d="M150 372q${dx * 0.4} -120 ${dx} ${-h}" stroke="${i % 2 ? "#94875f" : "#847a55"}" stroke-width="2.6" fill="none"/>`;
+    s += `<g transform="translate(${150 + dx} ${372 - h})"><circle r="25" fill="${["#b48c86", "#c2b184", "#a8919f", "#b7a06f", "#9d8f80"][i]}" stroke="#7d6c58" stroke-width="1.2"/>${[0, 1, 2, 3, 4].map((k) => `<ellipse cx="${Math.cos((k * Math.PI * 2) / 5) * 20}" cy="${Math.sin((k * Math.PI * 2) / 5) * 20}" rx="13" ry="8" transform="rotate(${(k * 72)} ${Math.cos((k * Math.PI * 2) / 5) * 20} ${Math.sin((k * Math.PI * 2) / 5) * 20})" fill="${["#cfada4", "#d8c9a0", "#bda9b6", "#cbb588", "#b5a898"][i]}" opacity=".9"/>`).join("")}</g>`;
+  });
+  s += `<path d="M138 268q12-14 24 0" stroke="#9c7f5f" stroke-width="6" fill="none"/><path d="M136 272q-10 30 14 44q24-14 14-44" fill="none" stroke="#9c7f5f" stroke-width="5"/>`;
+  return `<g filter="url(#ink)">${s}</g>`;
+}
+
+add("pinecone", "秋日松果", "botanical", svgUrl(pinecone()), 300, 400, 34);
+add("acorn", "橡实与帽", "botanical", svgUrl(acorn()), 300, 400, 32);
+add("mushroom-dried", "干枯蘑菇", "botanical", svgUrl(mushroom()), 300, 400, 36);
+add("berries", "红果小枝", "botanical", svgUrl(berryBranch()), 300, 400, 35);
+add("clover", "四叶三叶草", "botanical", svgUrl(clover()), 300, 400, 31);
+add("cotton", "一枝棉花", "botanical", svgUrl(cotton()), 300, 400, 38);
+add("wheat", "麦穗标本", "botanical", svgUrl(wheat()), 300, 400, 30);
+add("dried", "干花小束", "botanical", svgUrl(driedBouquet()), 300, 400, 37);
+
+/* ---------- 自然造物：鱼、贝、小动物与羽毛 ---------- */
+function fish() {
+  const scales = Array.from({ length: 4 }, (_, row) =>
+    Array.from({ length: 6 - row }, (_, i) => {
+      const x = 105 + i * 23 + (row % 2) * 11, y = 116 + row * 15;
+      return `<path d="M${x} ${y}q9 7 0 14"/>`;
+    }).join(""),
+  ).join("");
+  return `<defs><linearGradient id="koi" x2=".4" y2="1"><stop stop-color="#f6e8cf"/><stop offset=".5" stop-color="#e7cda7"/><stop offset="1" stop-color="#bc9b77"/></linearGradient><linearGradient id="fin" x2="1" y2="1"><stop stop-color="#bd7156" stop-opacity=".85"/><stop offset="1" stop-color="#efd2ad" stop-opacity=".65"/></linearGradient></defs><g transform="rotate(-18 150 145)" stroke-linejoin="round"><path d="M79 148Q53 115 24 106Q40 142 30 152Q18 176 24 204Q56 187 83 162" fill="url(#fin)" stroke="#a8735d" stroke-width="2"/><path d="M75 150Q105 78 185 88Q236 94 271 136Q282 148 269 157Q233 191 180 189Q110 190 75 150Z" fill="url(#koi)" stroke="#99775d" stroke-width="2.5"/><path d="M118 96Q116 70 145 60Q162 72 167 89M172 187Q178 207 201 219Q203 198 194 186" fill="url(#fin)" stroke="#a76d53" stroke-width="2"/><path d="M116 92Q132 109 128 134Q112 141 93 124Q92 107 116 92ZM187 94Q207 99 212 119Q202 133 185 124Q175 110 187 94ZM167 159Q196 159 216 175Q193 188 163 185Q150 174 167 159Z" fill="#b36c52" opacity=".9"/><path d="M105 164Q113 203 139 213Q148 185 135 171" fill="url(#fin)" stroke="#b08065" stroke-width="1.7"/><g fill="none" stroke="#b69877" stroke-width="1.2" opacity=".68">${scales}</g><path d="M77 148Q62 149 47 152M49 129Q59 145 57 166M34 120Q50 145 36 187M111 176Q128 198 136 204" fill="none" stroke="#9a6c55" stroke-width="1.1" opacity=".7"/><circle cx="250" cy="130" r="3.8" fill="#3f3830"/><circle cx="251" cy="129" r="1" fill="#fff7e7"/><path d="M267 152q5 4 0 7m-12-1q10 5 14 11" fill="none" stroke="#826452" stroke-width="1.5" stroke-linecap="round"/></g>`;
+}
+function spiralShell() {
+  let spiral = "";
+  for (let i = 0; i <= 100; i++) {
+    const t = i / 100 * Math.PI * 3.7, r = 3 + t * 4.1;
+    spiral += `${i ? "L" : "M"}${(129 + Math.cos(t) * r).toFixed(1)} ${(166 - Math.sin(t) * r).toFixed(1)}`;
+  }
+  const ribs = Array.from({ length: 13 }, (_, i) => {
+    const y = 200 + i * 9, half = 50 - i * 3.4;
+    return `<path d="M${132 - half} ${y}q${half * .8} -15 ${half * 1.9} 2"/>`;
+  }).join("");
+  return `<defs><linearGradient id="conch" x2="1" y2=".6"><stop stop-color="#a98b70"/><stop offset=".4" stop-color="#f0dfc3"/><stop offset=".72" stop-color="#d1b394"/><stop offset="1" stop-color="#a27d67"/></linearGradient><linearGradient id="lip" x2="1" y2="1"><stop stop-color="#a66f6c"/><stop offset=".55" stop-color="#dfb3a4"/><stop offset="1" stop-color="#f6e0c6"/></linearGradient></defs><g transform="rotate(-14 150 200)" stroke-linejoin="round"><path d="M123 119Q159 117 188 151Q219 182 205 219Q194 248 174 266L149 318Q129 305 110 269Q88 239 79 206Q76 174 95 146Q104 128 123 119Z" fill="url(#conch)" stroke="#9a7d68" stroke-width="2.5"/><path d="M129 130Q173 133 193 168Q205 188 198 208Q181 221 159 216Q146 198 138 195Q107 203 87 193Q87 149 129 130Z" fill="#e3ceb3" stroke="#a98a70" stroke-width="1.5"/><path d="${spiral}" fill="none" stroke="#8b6e59" stroke-width="3" stroke-linecap="round"/><g fill="none" stroke="#a58370" stroke-width="1.5" opacity=".75">${ribs}</g><path d="M137 192Q199 198 201 240Q195 261 174 284Q153 295 147 315Q126 312 115 286Q130 251 116 216Q118 200 137 192Z" fill="url(#lip)" stroke="#a57570" stroke-width="2.5"/><path d="M142 205Q175 209 186 230Q184 258 157 279Q142 283 132 270Q151 238 137 219Z" fill="#6f4f4f" opacity=".65"/><path d="M137 201Q168 201 191 230Q190 254 156 283Q139 298 147 312" fill="none" stroke="#f8e6d4" stroke-width="8" stroke-linecap="round"/><path d="M93 200Q108 211 114 242M102 166q13 15 38 13" fill="none" stroke="#f8e8d2" stroke-width="3" opacity=".65"/></g>`;
+}
+function scallop() {
+  const edge = "M150 298Q104 290 64 260Q51 250 59 233Q47 218 65 202Q58 184 77 170Q76 151 96 139Q102 120 123 118Q133 103 150 105Q166 103 177 118Q199 120 204 139Q225 150 223 170Q244 183 235 202Q254 216 241 233Q249 250 236 260Q196 290 150 298Z";
+  const ribs = Array.from({ length: 11 }, (_, i) => {
+    const a = Math.PI + i / 10 * Math.PI, x = 150 + Math.cos(a) * 85, y = 263 + Math.sin(a) * 140;
+    return `<path d="M150 284Q${((150 + x) / 2).toFixed(1)} ${((y + 284) / 2 - 16).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}"/>`;
+  }).join("");
+  return `<defs><radialGradient id="shellPearl" cx=".52" cy=".84" r=".84"><stop stop-color="#fff4dc"/><stop offset=".56" stop-color="#e9d6b9"/><stop offset=".84" stop-color="#d4bba5"/><stop offset="1" stop-color="#b69d87"/></radialGradient></defs><path d="M56 257l-14-20 33 7M244 257l14-20-33 7" fill="#c9b196" stroke="#987f65" stroke-width="2"/><path d="${edge}" fill="url(#shellPearl)" stroke="#9e876e" stroke-width="2.8" stroke-linejoin="round"/><g fill="none" stroke="#b39880" stroke-width="2.2" opacity=".82">${ribs}</g><g fill="none" stroke="#fff5e2" stroke-width="2.5" opacity=".9">${Array.from({ length: 9 }, (_, i) => { const a = Math.PI + (i + .5) / 10 * Math.PI; return `<path d="M150 279L${(150 + Math.cos(a) * 79).toFixed(1)} ${(263 + Math.sin(a) * 133).toFixed(1)}"/>`; }).join("")}</g><path d="M105 287Q150 270 195 287Q150 311 105 287Z" fill="#c4a486" stroke="#977b62" stroke-width="2"/><circle cx="150" cy="288" r="4" fill="#e9d3b3"/>`;
+}
+function starfish() {
+  const cx = 150, cy = 170;
+  let outline = "";
+  for (let i = 0; i <= 200; i++) {
+    const a = -Math.PI / 2 + i / 200 * Math.PI * 2;
+    const tip = (Math.cos((a + Math.PI / 2) * 5) + 1) / 2;
+    const r = 42 + 78 * tip ** 2.5;
+    outline += `${i ? "L" : "M"}${(cx + Math.cos(a) * r).toFixed(1)} ${(cy + Math.sin(a) * r).toFixed(1)}`;
+  }
+  const markings = Array.from({ length: 5 }, (_, arm) => {
+    const a = -Math.PI / 2 + arm * Math.PI * 2 / 5;
+    return Array.from({ length: 5 }, (_, j) => {
+      const r = 28 + j * 17, off = j % 2 ? 5 : -5;
+      return `<circle cx="${(cx + Math.cos(a) * r + Math.sin(a) * off).toFixed(1)}" cy="${(cy + Math.sin(a) * r - Math.cos(a) * off).toFixed(1)}" r="${(3.6 - j * .3).toFixed(1)}"/>`;
+    }).join("");
+  }).join("");
+  return `<defs><radialGradient id="starPigment" cx=".46" cy=".42" r=".72"><stop stop-color="#efd3b0"/><stop offset=".57" stop-color="#d69d87"/><stop offset="1" stop-color="#ae6f65"/></radialGradient></defs><path d="${outline}Z" fill="url(#starPigment)" stroke="#986c61" stroke-width="2.6" stroke-linejoin="round"/><g fill="none" stroke="#f8e4cc" stroke-width="1.6" opacity=".65">${Array.from({ length: 5 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; return `<path d="M150 170Q${(cx + Math.cos(a) * 42).toFixed(1)} ${(cy + Math.sin(a) * 42).toFixed(1)} ${(cx + Math.cos(a) * 105).toFixed(1)} ${(cy + Math.sin(a) * 103).toFixed(1)}"/>`; }).join("")}</g><g fill="#aa7164" opacity=".77">${markings}</g><circle cx="150" cy="170" r="12" fill="#e0b196" stroke="#b98072" stroke-width="1.4"/>`;
+}
+function jellyfish() {
+  const filaments = Array.from({ length: 8 }, (_, i) => {
+    const x = 90 + i * 17, end = 332 - (i % 3) * 18, sway = i % 2 ? 14 : -14;
+    return `<path d="M${x} 190C${x + sway} 222 ${x - sway} 249 ${x + sway} 280S${x - sway} ${end - 14} ${x + sway * .4} ${end}" fill="none" stroke="${i % 3 ? "#ae97a4" : "#c6aeba"}" stroke-width="${i % 3 ? 2 : 2.7}" stroke-linecap="round" opacity=".76"/>`;
+  }).join("");
+  return `<defs><linearGradient id="jellyBell" x2=".8" y2="1"><stop stop-color="#f5e6e5"/><stop offset=".45" stop-color="#dbbac6"/><stop offset="1" stop-color="#a88caa"/></linearGradient></defs><g>${filaments}<path d="M121 195Q106 245 131 293Q148 312 143 323M179 195Q196 245 169 293Q153 312 158 326" fill="none" stroke="#a58199" stroke-width="7" opacity=".45" stroke-linecap="round"/><path d="M51 186Q52 76 150 73Q249 76 249 186Q232 201 215 187Q194 207 174 189Q151 208 129 189Q106 207 85 187Q65 201 51 186Z" fill="url(#jellyBell)" stroke="#9e849b" stroke-width="2.6"/><path d="M61 177Q73 100 150 91Q222 95 239 177" fill="none" stroke="#f8f0e9" stroke-width="4" opacity=".8"/><path d="M72 158Q118 171 150 159Q183 171 229 158" fill="none" stroke="#b48fa3" stroke-width="2" opacity=".6"/><path d="M103 169Q121 137 133 160Q150 132 167 160Q180 138 198 169" fill="none" stroke="#b78fa0" stroke-width="2" opacity=".6"/><g fill="#f4e3df" opacity=".58"><circle cx="111" cy="119" r="6"/><circle cx="164" cy="105" r="4"/><circle cx="197" cy="142" r="5"/></g></g>`;
+}
+function crab() {
+  const legs = Array.from({ length: 3 }, (_, row) => [-1, 1].map(side => {
+    const y = 169 + row * 24, from = 150 + side * 67;
+    return `<path d="M${from} ${y}Q${from + side * 35} ${y - 10} ${from + side * 52} ${y + 10}L${from + side * (72 + row * 5)} ${y + 40 + row * 9}" fill="none" stroke="#9e6757" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M${from + side * 52} ${y + 10}l${side * (20 + row * 5)} ${30 + row * 9}" fill="none" stroke="#d3a58b" stroke-width="1.3"/>`;
+  }).join("")).join("");
+  const claw = `<path d="M95 164Q70 147 50 149Q31 153 27 174Q26 188 45 191Q43 177 58 169Q55 194 74 195Q91 185 98 173Z" fill="#c18970" stroke="#895948" stroke-width="2.3"/><path d="M32 172Q38 156 53 156M57 170Q66 179 68 191" fill="none" stroke="#f0c7a8" stroke-width="2"/><path d="M91 168Q72 158 60 169" fill="none" stroke="#855644" stroke-width="1.4"/>`;
+  return `<defs><linearGradient id="crabShell" x2=".25" y2="1"><stop stop-color="#e1ae91"/><stop offset=".58" stop-color="#bd806b"/><stop offset="1" stop-color="#945e53"/></linearGradient></defs><g stroke-linejoin="round">${legs}<g>${claw}</g><g transform="translate(300 0) scale(-1 1)">${claw}</g><path d="M79 171Q87 129 150 126Q213 129 221 171Q215 222 150 234Q85 222 79 171Z" fill="url(#crabShell)" stroke="#895848" stroke-width="2.8"/><path d="M94 156Q139 132 202 157" stroke="#f1c7ac" stroke-width="3.3" fill="none" opacity=".7"/><path d="M104 197Q151 216 196 197" stroke="#965e51" stroke-width="1.4" fill="none"/><path d="M117 143l-9-10M183 143l9-10" stroke="#8d594d" stroke-width="2"/><g fill="#6c463d"><circle cx="113" cy="152" r="3.6"/><circle cx="187" cy="152" r="3.6"/></g><g fill="#e9b69b" opacity=".68"><circle cx="123" cy="177" r="2.3"/><circle cx="140" cy="165" r="2"/><circle cx="162" cy="181" r="2.5"/><circle cx="177" cy="169" r="2"/></g></g>`;
+}
+function dragonfly() {
+  const wing = `<path d="M149 164Q101 106 39 111Q24 119 43 136Q86 166 145 176Z" fill="url(#wingGlass)" stroke="#667f79" stroke-width="2"/><path d="M149 184Q99 194 49 239Q38 253 56 253Q114 242 150 194Z" fill="url(#wingGlass)" stroke="#667f79" stroke-width="2"/><g fill="none" stroke="#8da69a" stroke-width="1.1" opacity=".82"><path d="M147 170Q94 133 41 120M146 190Q94 213 51 247"/>${[0, 1, 2, 3, 4].map(i => `<path d="M${66 + i * 17} ${121 + i * 8}q-9 9-4 23M${62 + i * 18} ${242 - i * 8}q-5-10 3-19"/>`).join("")}</g><path d="M45 118l18 15M52 249l17-9" stroke="#536e68" stroke-width="3"/>`;
+  const segments = Array.from({ length: 9 }, (_, i) => `<path d="M${149 + i * .4} ${215 + i * 12}q-2 3 0 7" fill="none" stroke="#d8caa9" stroke-width="1.4" opacity=".8"/>`).join("");
+  return `<defs><linearGradient id="wingGlass" x2="1" y2="1"><stop stop-color="#f7f2dd" stop-opacity=".89"/><stop offset=".55" stop-color="#d9e2d6" stop-opacity=".85"/><stop offset="1" stop-color="#a9c0af" stop-opacity=".72"/></linearGradient><linearGradient id="dragonBody" x2="1" y2="1"><stop stop-color="#819c8b"/><stop offset="1" stop-color="#3f6762"/></linearGradient></defs><g>${wing}<g transform="translate(300 0) scale(-1 1)">${wing}</g><path d="M150 207Q159 248 153 327" fill="none" stroke="#496c66" stroke-width="8" stroke-linecap="round"/>${segments}<ellipse cx="150" cy="182" rx="14" ry="38" fill="url(#dragonBody)" stroke="#3f605a" stroke-width="2"/><circle cx="150" cy="129" r="14" fill="#57766e" stroke="#3e5852" stroke-width="2"/><circle cx="138" cy="128" r="8" fill="#435a59"/><circle cx="162" cy="128" r="8" fill="#435a59"/><path d="M145 124q3-3 5 0" stroke="#cfdfc6" stroke-width="2" fill="none" opacity=".6"/><path d="M144 324l-8 12m17-12 10 11" stroke="#546a63" stroke-width="2.6"/></g>`;
+}
+function feather() {
+  const vane = "M157 59Q106 92 96 167Q80 231 119 300Q140 322 156 334Q207 287 214 205Q226 119 157 59Z";
+  const barbs = Array.from({ length: 23 }, (_, i) => {
+    const y = 86 + i * 10.3;
+    return `<path d="M${156 + i * .3} ${y.toFixed(1)}Q${108 + i * .2} ${(y + 1).toFixed(1)} 81 ${(y - 20).toFixed(1)}M${156 + i * .3} ${y.toFixed(1)}Q${207 + i * .15} ${(y - 9).toFixed(1)} 225 ${(y - 32).toFixed(1)}"/>`;
+  }).join("");
+  return `<defs><linearGradient id="featherVane" x2="1" y2=".2"><stop stop-color="#8d8476"/><stop offset=".45" stop-color="#d7cbb6"/><stop offset=".53" stop-color="#f0e7d1"/><stop offset="1" stop-color="#ad9d82"/></linearGradient><clipPath id="featherClip"><path d="${vane}"/></clipPath></defs><g transform="rotate(15 150 200)"><path d="${vane}" fill="url(#featherVane)" stroke="#978d78" stroke-width="2.2"/><g clip-path="url(#featherClip)" fill="none" stroke="#887d6b" stroke-width="1.35" opacity=".54">${barbs}</g><path d="M156 64Q146 165 157 331Q164 359 173 380" stroke="#806f5a" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M158 66Q157 174 159 323" stroke="#f9f2de" stroke-width="1.6" fill="none"/><path d="M144 298q8 20 15 26" stroke="#eee4cc" stroke-width="4" fill="none" opacity=".7"/></g>`;
+}
+function bee() {
+  const fur = Array.from({ length: 15 }, (_, i) => {
+    const x = 107 + (i % 5) * 13, y = 166 + Math.floor(i / 5) * 14;
+    return `<path d="M${x} ${y}l${i % 2 ? 7 : -7} -7"/>`;
+  }).join("");
+  return `<defs><linearGradient id="beeGold" x2="0" y2="1"><stop stop-color="#edce8b"/><stop offset=".5" stop-color="#cba75f"/><stop offset="1" stop-color="#8f7447"/></linearGradient><linearGradient id="beeWing" x2="1" y2="1"><stop stop-color="#f7f2df" stop-opacity=".88"/><stop offset="1" stop-color="#a8b6ab" stop-opacity=".7"/></linearGradient><clipPath id="beeAbdomen"><ellipse cx="195" cy="195" rx="53" ry="33"/></clipPath></defs><g stroke-linejoin="round"><g fill="none" stroke="#584d35" stroke-width="2.7" stroke-linecap="round"><path d="M120 208q-22 27-28 54m56-49q-8 30-2 53m26-52q7 27 18 44m-83-46q-31 14-41 29"/></g><ellipse cx="195" cy="195" rx="53" ry="33" fill="url(#beeGold)" stroke="#80613f" stroke-width="2"/><g clip-path="url(#beeAbdomen)" stroke="#574932" stroke-width="13" opacity=".88"><path d="M171 149q22 38-1 87M200 146q24 49-2 99M231 155q15 40-6 74"/></g><path d="M244 194q18 2 21 14l-19-4" fill="#74583d"/><path d="M135 180Q126 129 151 91Q177 72 178 121Q174 160 148 185Z" fill="url(#beeWing)" stroke="#8d9f94" stroke-width="2"/><path d="M145 181Q128 112 113 98Q84 88 100 129Q113 159 139 187Z" fill="url(#beeWing)" stroke="#8d9f94" stroke-width="2"/><g fill="none" stroke="#9eaa9a" stroke-width="1.2" opacity=".85"><path d="M145 180q24-47 19-90M137 180q-18-48-30-76M147 154l-21-25m27 14 18-32"/></g><ellipse cx="132" cy="193" rx="39" ry="40" fill="url(#beeGold)" stroke="#846a48" stroke-width="2"/><g stroke="#f6dfab" stroke-width="2" opacity=".72">${fur}</g><circle cx="91" cy="197" r="25" fill="#695945" stroke="#4f4336" stroke-width="2"/><ellipse cx="80" cy="194" rx="10" ry="14" fill="#413d32"/><path d="M82 178Q61 145 49 151M91 173Q86 143 70 139" fill="none" stroke="#5c523b" stroke-width="2.6" stroke-linecap="round"/><circle cx="49" cy="151" r="3.5" fill="#5c523b"/><circle cx="70" cy="139" r="3.5" fill="#5c523b"/><path d="M66 205q-13 7-14 14" fill="none" stroke="#51483a" stroke-width="2"/></g>`;
+}
+function natureButterfly() {
+  const wing = `<path d="M148 158Q102 102 80 68Q52 37 31 70Q14 106 34 157Q57 190 142 180Z" fill="#aa8866" stroke="#685941" stroke-width="2.7"/><path d="M147 178Q104 171 68 191Q40 198 51 237Q74 269 109 263Q138 251 150 194Z" fill="#b79570" stroke="#685941" stroke-width="2.7"/><path d="M141 166Q95 106 62 75Q33 110 51 147Q84 170 141 175Z" fill="#d8bd91" opacity=".82"/><path d="M145 189Q95 186 70 211Q70 247 107 250Q135 235 145 189Z" fill="#dac49f" opacity=".77"/><path d="M143 178Q90 118 48 92M143 181Q88 141 37 144M139 199Q108 211 97 253" fill="none" stroke="#705d47" stroke-width="1.6" opacity=".68"/><ellipse cx="67" cy="126" rx="19" ry="24" fill="#695a48"/><ellipse cx="67" cy="126" rx="13" ry="18" fill="#d7c39b"/><ellipse cx="67" cy="126" rx="7" ry="10" fill="#6a5b4b"/><ellipse cx="94" cy="222" rx="12" ry="14" fill="#8e7057"/><ellipse cx="94" cy="222" rx="6" ry="7" fill="#eedbbb"/><g fill="#f5e6c2">${[0, 1, 2, 3, 4, 5, 6].map((i) => `<circle cx="${33 + i * 15}" cy="${82 + (i % 3) * 7}" r="3.1"/>`).join("")}${[0, 1, 2, 3].map(i => `<circle cx="${53 + i * 11}" cy="${239 + (i % 2) * 6}" r="2.5"/>`).join("")}</g>`;
+  return `<g>${wing}<g transform="translate(300 0) scale(-1 1)">${wing}</g><path d="M149 148Q145 185 150 222Q155 185 151 148Z" fill="#574b3e" stroke="#433a32" stroke-width="1.6"/><circle cx="150" cy="146" r="7" fill="#5a4b3d"/><path d="M147 143Q137 115 120 107M153 143Q163 115 180 107" fill="none" stroke="#554739" stroke-width="2" stroke-linecap="round"/></g>`;
+}
+
+add("fish-koi", "池塘锦鲤", "nature", svgUrl(fish(), 300, 300), 300, 300, 58);
+add("shell-spiral", "螺旋海螺", "nature", svgUrl(spiralShell()), 300, 400, 36);
+add("shell-scallop", "扇贝空壳", "nature", svgUrl(scallop(), 300, 340), 300, 340, 46);
+add("starfish", "五角海星", "nature", svgUrl(starfish(), 300, 340), 300, 340, 42);
+add("jellyfish", "月白水母", "nature", svgUrl(jellyfish(), 300, 360), 300, 360, 38);
+add("crab", "沙滩小蟹", "nature", svgUrl(crab(), 300, 300), 300, 300, 52);
+add("dragonfly", "芦苇蜻蜓", "nature", svgUrl(dragonfly(), 300, 360), 300, 360, 40);
+add("feather-grey", "灰羽落叶", "nature", svgUrl(feather()), 300, 400, 32);
+add("bee", "野地蜜蜂", "nature", svgUrl(bee(), 280, 300), 280, 300, 40);
+add("butterfly-nature", "旧纸蝴蝶", "nature", svgUrl(natureButterfly(), 300, 320), 300, 320, 44);
+
 export const MATERIALS = list;
 export const CATEGORIES = [
   ["all", "全部"],
   ["botanical", "花与叶"],
+  ["nature", "自然造物"],
   ["handwritten", "手写条"],
   ["stamp", "邮票"],
   ["medal", "勋章"],

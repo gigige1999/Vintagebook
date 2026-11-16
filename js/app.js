@@ -1,13 +1,23 @@
-import { BOOKS, PAPERS, paperTexture, woodTexture } from "./textures.js";
+import { BOOKS, PAPERS, paperTexture } from "./textures.js";
 import {
   MATERIALS,
-  CATEGORIES,
+  CATEGORIES as BASE_CATEGORIES,
   PHOTO_FRAMES,
-  noteImage,
   photoImage,
 } from "./materials.js";
-import { createDesk, renderDimensionalMaterials } from "./scene.js";
+import { mountDesk } from "./desk-loader.js";
 import { BOOK_THEMES } from "./themes.js";
+import { NOTE_FONTS, noteFamily, renderNote, renderCard, defaultDateText, CARD_KINDS } from "./note-type.js";
+import { EXTRA_MATERIALS, CUSTOM_STICKER } from "./material-styles.js";
+import { GENERATED_MATERIALS, LIBRARY_STYLES } from "./material-library.js";
+import { assetUrl, prepareAssets, loadAsset, saveAsset, importImage, imageDataUrl } from "./asset-store.js";
+import { mountStickerStudio } from "./sticker-studio.js";
+
+const LIBRARY = [...MATERIALS, ...EXTRA_MATERIALS, ...GENERATED_MATERIALS];
+const CATEGORIES = [...BASE_CATEGORIES, ["bookmark", "书签"], ["date", "日期条"], ["diary", "日记便签"], ["custom", "我的贴纸"]];
+const STYLE_TAG = { gothic: "哥特", rococo: "洛可可", victorian: "维多", nouveau: "新艺术", curio: "珍奇", baroque: "巴洛克", surreal: "悬疑", modern: "平面", arcana: "英伦秘法", dimensional: "立体", vintage: "旧纸" };
+const photoSources = new Map();
+let materialStyle = "all", chosenFont = "classic", noteTarget = null, editorSession = 0, materialLimit = 48;
 
 const $ = (s) => document.querySelector(s),
   $$ = (s) => [...document.querySelectorAll(s)];
@@ -33,9 +43,12 @@ let bookIndex = 2,
   photoMode = "insert",
   photoDialogTarget = null;
 const papers = new Map(
-  PAPERS.map((p) => [p.id, paperTexture(p.id).toDataURL()]),
+  PAPERS.map((p) => [
+    p.id,
+    new URL(`../assets/textures/paper-${p.id}.jpg`, import.meta.url).href,
+  ]),
 );
-const materials = new Map(MATERIALS.map((m) => [m.id, m]));
+const materials = new Map([...LIBRARY, CUSTOM_STICKER].map((m) => [m.id, m]));
 const uid = () =>
   globalThis.crypto?.randomUUID?.() ||
   `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -141,10 +154,9 @@ $("#book-options").addEventListener("click", (e) => {
   const b = e.target.closest("[data-book]");
   if (b) openSelectedBook(Number(b.dataset.book));
 });
-requestAnimationFrame(() => {
-  desk = createDesk(openSelectedBook);
-});
-const deskWood = woodTexture(800, 800).toDataURL();
+desk = mountDesk(openSelectedBook);
+performance.mark("atelier-interactive");
+const deskWood = new URL("../assets/textures/wood.jpg", import.meta.url).href;
 $("#about-btn").onclick = () => $("#about-dialog").showModal();
 $("#close-about").onclick = () => $("#about-dialog").close();
 function showPapers(mode) {
@@ -188,7 +200,7 @@ async function openSelectedBook(i) {
   $("#chosen-sub").textContent = "正在展开你的故事…";
   try {
     await desk?.open?.(i);
-    openEditor(validState(old) ? clone(old) : newJournal());
+    await openEditor(validState(old) ? clone(old) : newJournal());
   } finally {
     $("#home").classList.remove("opening");
     openingBook = false;
@@ -222,7 +234,7 @@ function newJournal() {
   return {
     version: 1,
     book: BOOKS[bookIndex].id,
-    name: "我的拾光手记",
+    name: "我的复古手帐",
     spread: 0,
     pages: [theme.left, theme.right].map((items) => ({
       paper: chosenPaper,
@@ -265,8 +277,13 @@ function applyTheme() {
     $("#desk-props").append(image);
   });
 }
-function openEditor(s) {
+async function openEditor(s) {
+  const ticket = ++editorSession;
+  const missing = await prepareJournal(s);
+  if (ticket !== editorSession) return;
+  saveNow();
   state = s;
+  if (missing) toast("部分本地图片已被清理，其他内容仍可编辑；请重新上传缺失图片。");
   bookIndex = BOOKS.findIndex((b) => b.id === s.book);
   undoStack = [];
   redoStack = [];
@@ -309,7 +326,7 @@ $("#resume-btn").onclick = () => {
     openSelectedBook(BOOKS.findIndex((b) => b.id === all.last));
 };
 $("#journal-name").addEventListener("change", () => {
-  const value = $("#journal-name").value.trim() || "我的拾光手记";
+  const value = $("#journal-name").value.trim() || "我的复古手帐";
   checkpoint();
   state.name = value;
   $("#journal-name").value = value;
@@ -319,9 +336,25 @@ function itemSource(item) {
   const m = materials.get(item.material);
   if (!m) return null;
   if (m.category === "handwritten")
-    return noteImage(item.text ?? m.text, m.variant);
-  if (m.category === "photo") return photoImage(item.photo || "", m.frame);
+    return renderNote(item.text ?? m.text, m.variant, item.font || "classic");
+  if (m.category === "date" || m.category === "diary")
+    return renderCard(item.text ?? m.placeholder ?? "", m.cardKind, m.cardStyle, item.font || "classic");
+  if (m.category === "photo")
+    return photoImage(photoSources.get(item.photoAsset) || item.photo || "", m.frame);
+  if (m.category === "custom") return assetUrl(item.stickerAsset) || m.src;
   return m.src;
+}
+function itemSize(item) {
+  const m = materials.get(item.material);
+  return m.category === "custom" ? { w: item.imageW || m.w, h: item.imageH || m.h } : m;
+}
+async function prepareJournal(journal) {
+  const missing = await prepareAssets(journal);
+  const ids = new Set(journal.pages.flatMap(p => p.items.map(i => i.photoAsset).filter(Boolean)));
+  const photos = await Promise.allSettled([...ids].map(async id => {
+    if (!photoSources.has(id)) photoSources.set(id, await imageDataUrl(await loadAsset(id)));
+  }));
+  return missing || photos.some(p => p.status === "rejected");
 }
 function getSelection() {
   if (!selected || !state) return null;
@@ -342,7 +375,7 @@ function selectItem(id) {
     const m = materials.get(sel.item.material);
     $('#element-tools [data-action="edit"]').classList.toggle(
       "hidden",
-      !["handwritten", "photo"].includes(m.category),
+      !["handwritten", "photo", "custom", "date", "diary"].includes(m.category),
     );
     $('#element-tools [data-action="frame"]').classList.toggle(
       "hidden",
@@ -353,6 +386,10 @@ function selectItem(id) {
 }
 function renderSpread() {
   if (!state) return;
+  $("#open-book-stage").style.setProperty(
+    "--page-depth",
+    `${Math.min(12, 6 + state.pages.length * 0.15)}px`,
+  );
   $$(".journal-page").forEach((node, side) => {
     const p = state.pages[state.spread * 2 + side];
     node.querySelector(".page-surface").style.backgroundImage =
@@ -389,9 +426,10 @@ function renderSpread() {
   $("#next-page").disabled =
     state.spread >= state.pages.length / 2 - 1 || turning;
   selectItem(selected);
+  if (category === "custom") renderMaterials();
 }
 function styleItem(el, item, index) {
-  const m = materials.get(item.material);
+  const m = itemSize(item);
   el.style.left = `${item.x}%`;
   el.style.top = `${item.y}%`;
   el.style.width = `${item.width}%`;
@@ -399,25 +437,43 @@ function styleItem(el, item, index) {
   el.style.setProperty("--rotation", `${item.rotation}deg`);
   if (index !== undefined) el.style.zIndex = index + 1;
 }
+function materialThumb(m) {
+  return m.cardKind ? renderCard(m.placeholder || " ", m.cardKind, m.cardStyle, "classic") : m.src;
+}
 function renderMaterials() {
+  if (category === "custom") {
+    const own = [...new Map((state?.pages.flatMap(p => p.items) || [])
+      .filter(i => i.material === CUSTOM_STICKER.id && assetUrl(i.stickerAsset))
+      .map(i => [i.stickerAsset, i])).values()];
+    $("#material-count").textContent = String(own.length).padStart(2, "0");
+    $("#material-more").classList.add("hidden");
+    $("#material-grid").innerHTML = '<button class="material-card custom-create" data-create-sticker><strong>+</strong><span>制作新贴纸</span></button>' + own.map((item, i) =>
+      `<button class="material-card" data-own-sticker="${item.uid}" title="再贴一张"><img src="${assetUrl(item.stickerAsset)}" alt="我的贴纸 ${i + 1}" draggable="false"><span>我的贴纸 ${i + 1}</span></button>`).join("");
+    return;
+  }
   const search = $("#material-search").value.trim().toLowerCase();
-  const filtered = MATERIALS.filter(
+  const filtered = LIBRARY.filter(
     (m) =>
       (category === "all" || m.category === category) &&
+      (materialStyle === "all" || (m.style || (m.dimensional ? "dimensional" : "vintage")) === materialStyle) &&
       (!search ||
         `${m.name} ${CATEGORIES.find((c) => c[0] === m.category)?.[1]}`
           .toLowerCase()
           .includes(search)),
   );
-  $("#material-count").textContent = String(MATERIALS.length).padStart(2, "0");
+  $("#material-count").textContent = String(filtered.length).padStart(2, "0");
   $("#material-grid").innerHTML =
     filtered
+      .slice(0, materialLimit)
       .map(
         (m) =>
-          `<button class="material-card" draggable="true" data-material="${m.id}" title="点击贴上 ${m.name}"><img src="${m.src}" alt="${m.name}" draggable="false"><span>${m.name}</span>${m.dimensional ? '<small class="dimensional">立体</small>' : ""}</button>`,
+          `<button class="material-card" draggable="true" data-material="${m.id}" title="点击贴上 ${m.name}"><img src="${materialThumb(m)}" alt="${m.name}" draggable="false" loading="lazy" decoding="async" width="100" height="77"><span>${m.name}</span>${m.style && m.style !== "vintage" ? `<small class="dimensional">${STYLE_TAG[m.style] || ""}</small>` : m.dimensional ? '<small class="dimensional">立体</small>' : ""}</button>`,
       )
       .join("") ||
     '<div class="material-empty">这个抽屉暂时没有找到。<br>换个关键词试试？</div>';
+  const more = $("#material-more");
+  more.classList.toggle("hidden", filtered.length <= materialLimit);
+  more.textContent = `再展开 ${Math.min(48, filtered.length - materialLimit)} 件藏品`;
 }
 $("#category-tabs").innerHTML = CATEGORIES.map(
   ([id, label]) =>
@@ -427,32 +483,76 @@ $("#category-tabs").onclick = (e) => {
   const b = e.target.closest("[data-category]");
   if (!b) return;
   category = b.dataset.category;
+  materialLimit = 48;
   $$(".category-tab").forEach((t) => {
     t.classList.toggle("active", t === b);
     t.setAttribute("aria-pressed", String(t === b));
   });
   renderMaterials();
 };
-$("#material-search").addEventListener("input", renderMaterials);
+$("#material-style").innerHTML = LIBRARY_STYLES.map(([id, name]) => `<option value="${id}">${name}</option>`).join("");
+$("#material-style").onchange = e => { materialStyle = e.target.value; materialLimit = 48; renderMaterials(); };
+$("#material-more").onclick = () => { materialLimit += 48; renderMaterials(); };
+let searchTimer;
+$("#material-search").addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { materialLimit = 48; renderMaterials(); }, 120);
+});
 function addMaterial(id, side = activeSide, x = 50, y = 50) {
   if (!materials.has(id) || turning) return;
   checkpoint();
   const p = state.pages[state.spread * 2 + side];
+  const material = materials.get(id);
   const item = makeItem(id, x, y, null, ((p.items.length % 5) - 2) * 3);
+  if (material.category === "date") item.text = defaultDateText();
+  if (material.category === "diary") item.text = "今天，想记住的一件小事……";
   p.items.push(item);
   selected = item.uid;
   activeSide = side;
   renderSpread();
   save();
-  if (materials.get(id).category === "photo")
+  if (material.category === "photo")
     toast("双击照片框，放入你自己的照片。");
-  else if (materials.get(id).category === "handwritten")
+  else if (material.category === "handwritten")
     toast("双击手写条，可以写下自己的故事。");
+  else if (material.category === "date")
+    toast("日期条已贴上，双击可以改日期或换字体。");
+  else if (material.category === "diary")
+    toast("日记便签已贴上，双击可以写下一段长文字。");
 }
 $("#material-grid").onclick = (e) => {
+  if (e.target.closest("[data-create-sticker]")) { stickerStudio.open(); return; }
+  const own = e.target.closest("[data-own-sticker]");
+  if (own && !turning) {
+    const original = state.pages.flatMap(p => p.items).find(i => i.uid === own.dataset.ownSticker);
+    if (!original) return;
+    checkpoint();
+    const item = { ...clone(original), uid: uid(), x: 50, y: 50 };
+    state.pages[state.spread * 2 + activeSide].items.push(item);
+    selected = item.uid;
+    renderSpread(); save();
+    return;
+  }
   const b = e.target.closest("[data-material]");
   if (b) addMaterial(b.dataset.material);
 };
+const stickerStudio = mountStickerStudio({
+  notify: toast,
+  onCommit(data, targetUid) {
+    if (!state || turning || $("#editor").classList.contains("hidden")) throw new Error("请回到书页后再保存贴纸。");
+    let item = targetUid ? state.pages.flatMap(p => p.items).find(i => i.uid === targetUid) : null;
+    if (targetUid && !item) throw new Error("原贴纸已不在手帐中。");
+    checkpoint();
+    if (!item) {
+      item = makeItem(CUSTOM_STICKER.id, 50, 50, 45, -3);
+      state.pages[state.spread * 2 + activeSide].items.push(item);
+    }
+    Object.assign(item, data);
+    selected = item.uid;
+    renderSpread(); renderMaterials(); save();
+  }
+});
+$("#sticker-upload-btn").onclick = () => { if (state && !turning) stickerStudio.open(); };
 $("#material-grid").addEventListener("dragstart", (e) => {
   const b = e.target.closest("[data-material]");
   if (!b) return;
@@ -602,24 +702,62 @@ function editSelected() {
   const sel = getSelection();
   if (!sel) return;
   const m = materials.get(sel.item.material);
-  if (m.category === "handwritten") {
-    $("#note-text").value = sel.item.text ?? m.text;
+  if (["handwritten", "date", "diary"].includes(m.category)) {
+    noteTarget = sel.item.uid;
+    chosenFont = sel.item.font || "classic";
+    const fallback = m.category === "date" ? defaultDateText() : m.category === "diary" ? "" : m.text;
+    $("#note-text").value = sel.item.text ?? fallback;
+    $("#note-text").maxLength = m.max || (m.category === "date" ? 40 : 160);
+    $("#note-text").rows = m.category === "diary" ? 9 : 4;
+    $("#note-text").placeholder = m.placeholder || "今天值得记住的事……";
+    $("#text-dialog h2").textContent = m.category === "date" ? "写上这一天" : m.category === "diary" ? "写下一页日记" : "写下一点心情";
+    $(".note-live-preview").classList.toggle("tall", m.category === "diary");
+    renderNotePreview();
     $("#text-dialog").showModal();
     setTimeout(() => $("#note-text").focus(), 80);
   } else if (m.category === "photo") {
     showPhotoDialog("edit", sel.item);
+  } else if (m.category === "custom") {
+    stickerStudio.open(sel.item);
   }
 }
+function renderNotePreview() {
+  const item = state?.pages.flatMap(p => p.items).find(i => i.uid === noteTarget);
+  if (!item) return;
+  const m = materials.get(item.material), font = noteFamily(chosenFont);
+  $("#note-preview").src = m.category === "date" || m.category === "diary"
+    ? renderCard($("#note-text").value || " ", m.cardKind, m.cardStyle, chosenFont)
+    : renderNote($("#note-text").value || " ", m.variant, chosenFont);
+  $("#note-text").style.fontFamily = font.family;
+  $("#note-text").style.fontStyle = font.style;
+  $$("[data-note-font]").forEach(button => {
+    button.classList.toggle("active", button.dataset.noteFont === chosenFont);
+    button.setAttribute("aria-pressed", String(button.dataset.noteFont === chosenFont));
+  });
+}
+$("#note-fonts").innerHTML = NOTE_FONTS.map(f =>
+  `<button data-note-font="${f.id}" aria-pressed="false">${f.name}</button>`).join("");
+$("#note-fonts").onclick = e => {
+  const button = e.target.closest("[data-note-font]");
+  if (button) { chosenFont = button.dataset.noteFont; renderNotePreview(); }
+};
+$("#note-text").addEventListener("input", renderNotePreview);
+document.fonts?.ready.then(() => {
+  if (state) renderSpread();
+  if ($("#text-dialog").open) renderNotePreview();
+});
 $("#confirm-text").onclick = () => {
-  const sel = getSelection();
-  if (sel) {
+  const item = state?.pages.flatMap(p => p.items).find(i => i.uid === noteTarget);
+  if (item) {
     checkpoint();
-    sel.item.text = $("#note-text").value.trim() || " ";
+    item.text = $("#note-text").value.trim() || " ";
+    item.font = chosenFont;
     renderSpread();
     save();
   }
   $("#text-dialog").close();
 };
+$("#text-dialog").addEventListener("close", () => { noteTarget = null; });
 function itemAction(action) {
   const sel = getSelection();
   if (!sel) return;
@@ -648,10 +786,17 @@ function itemAction(action) {
       p.items = p.items.filter((i) => i.uid !== selected);
       selected = null;
       break;
-    case "forward":
-      p.items = p.items.filter((i) => i.uid !== selected);
-      p.items.push(item);
+    case "front":
+    case "back":
+    case "up":
+    case "down": {
+      const index = p.items.findIndex((i) => i.uid === selected);
+      if (index < 0) break;
+      p.items.splice(index, 1);
+      const target = action === "front" ? p.items.length : action === "back" ? 0 : action === "up" ? index + 1 : index - 1;
+      p.items.splice(clamp(target, 0, p.items.length), 0, item);
       break;
+    }
     case "copy": {
       const copy = {
         ...clone(item),
@@ -758,10 +903,13 @@ let photoSession = 0;
 function showPhotoDialog(mode = "insert", item = null) {
   if (!state || turning) return;
   photoSession++;
+  $("#confirm-photo").disabled = false;
   photoMode = mode;
   photoDialogTarget = item?.uid || null;
   chosenFrame = item ? materials.get(item.material).frame : "polaroid";
-  photoDraft = item?.photo || null;
+  photoDraft = item?.photoAsset && photoSources.has(item.photoAsset)
+    ? { asset: item.photoAsset, src: photoSources.get(item.photoAsset) }
+    : item?.photo ? { asset: null, src: item.photo } : null;
   $("#photo-dialog-title").textContent =
     mode === "edit" ? "回忆不变，换一种装裱。" : "为回忆，挑一个相框。";
   renderPhotoTemplates();
@@ -770,7 +918,7 @@ function showPhotoDialog(mode = "insert", item = null) {
 function renderPhotoTemplates() {
   $("#photo-templates").innerHTML = PHOTO_FRAMES.map(
     (frame) =>
-      `<button class="photo-template ${frame.id === chosenFrame ? "active" : ""}" data-frame="${frame.id}" aria-pressed="${frame.id === chosenFrame}"><img src="${photoImage(photoDraft || "", frame.id)}" alt="${frame.name}" draggable="false"><span>${frame.name}</span></button>`,
+      `<button class="photo-template ${frame.id === chosenFrame ? "active" : ""}" data-frame="${frame.id}" aria-pressed="${frame.id === chosenFrame}"><img src="${photoImage(photoDraft?.src || "", frame.id)}" alt="${frame.name}" draggable="false"><span>${frame.name}</span></button>`,
   ).join("");
   $("#photo-frame-description").textContent = PHOTO_FRAMES.find(
     (f) => f.id === chosenFrame,
@@ -802,7 +950,7 @@ $("#confirm-photo").onclick = () => {
       .flatMap((p) => p.items)
       .find((i) => i.uid === photoDialogTarget);
   if (photoMode === "edit" && !target) {
-    toast("这张照片已经不在当前手账里了。");
+    toast("这张照片已经不在当前手帐里了。");
     return;
   }
   checkpoint();
@@ -810,7 +958,13 @@ $("#confirm-photo").onclick = () => {
     target = makeItem(`photo-${chosenFrame}`, 50, 50, 57, -4);
     state.pages[state.spread * 2 + activeSide].items.push(target);
   } else target.material = `photo-${chosenFrame}`;
-  target.photo = photoDraft;
+  if (photoDraft.asset) {
+    target.photoAsset = photoDraft.asset;
+    delete target.photo;
+  } else {
+    target.photo = photoDraft.src;
+    delete target.photoAsset;
+  }
   selected = target.uid;
   renderSpread();
   save();
@@ -841,39 +995,31 @@ $("#photo-input").onchange = async (e) => {
   }
   if (!state || turning) return;
   if (!$("#photo-dialog").open) showPhotoDialog();
-  const session = photoSession,
-    journal = state;
-  const url = URL.createObjectURL(file);
+  const session = ++photoSession, journal = state;
+  $("#confirm-photo").disabled = true;
   try {
-    const img = await loadImage(url),
-      scale = Math.min(1, 900 / Math.max(img.naturalWidth, img.naturalHeight)),
-      c = document.createElement("canvas");
-    c.width = Math.round(img.naturalWidth * scale);
-    c.height = Math.round(img.naturalHeight * scale);
-    const x = c.getContext("2d");
-    x.fillStyle = "#eee5d5";
-    x.fillRect(0, 0, c.width, c.height);
-    x.drawImage(img, 0, 0, c.width, c.height);
-    if (
-      session !== photoSession ||
-      journal !== state ||
-      !$("#photo-dialog").open
-    )
-      return;
-    photoDraft = c.toDataURL("image/jpeg", 0.82);
+    const imported = await importImage(file);
+    if (session !== photoSession || journal !== state || !$("#photo-dialog").open) return;
+    const asset = await saveAsset(imported.blob);
+    const src = await imageDataUrl(assetUrl(asset));
+    if (session !== photoSession || journal !== state || !$("#photo-dialog").open) return;
+    photoSources.set(asset, src);
+    photoDraft = { asset, src };
     renderPhotoTemplates();
-    toast("照片已放入预览，挑好模板后确认贴入书页。");
-  } catch {
-    toast("没能读到这张图片，请试试 JPG、PNG 或 WebP。");
+    toast("高清照片已放入预览，挑好模板后确认贴入书页。");
+  } catch (error) {
+    if (session === photoSession) toast(error.message);
   } finally {
-    URL.revokeObjectURL(url);
+    if (session === photoSession) $("#confirm-photo").disabled = false;
   }
 };
 $("#export-btn").onclick = async () => {
   if (!state) return;
-  const b = $("#export-btn");
+  const b = $("#export-btn"), journal = clone(state), book = BOOKS.find(b => b.id === journal.book);
   b.disabled = true;
   try {
+    await document.fonts?.ready;
+    await prepareJournal(journal);
     const W = 1600,
       H = 1120,
       margin = 38,
@@ -881,15 +1027,17 @@ $("#export-btn").onclick = async () => {
       pageW = (W - 2 * margin - gap) / 2,
       pageH = H - 2 * margin,
       c = document.createElement("canvas");
-    c.width = W;
-    c.height = H;
+    c.width = W * 2;
+    c.height = H * 2;
     const x = c.getContext("2d");
-    x.fillStyle = BOOKS[bookIndex].color;
+    x.scale(2, 2);
+    x.imageSmoothingQuality = "high";
+    x.fillStyle = book.color;
     x.fillRect(0, 0, W, H);
-    x.strokeStyle = BOOKS[bookIndex].gold;
+    x.strokeStyle = book.gold;
     x.strokeRect(8, 8, W - 16, H - 16);
     for (let side = 0; side < 2; side++) {
-      const p = state.pages[state.spread * 2 + side],
+      const p = journal.pages[journal.spread * 2 + side],
         left = margin + side * (pageW + gap);
       x.save();
       x.beginPath();
@@ -899,9 +1047,11 @@ $("#export-btn").onclick = async () => {
       for (const item of p.items) {
         const m = materials.get(item.material);
         if (!m) continue;
-        const img = await loadImage(itemSource(item)),
+        if ((item.stickerAsset && !assetUrl(item.stickerAsset)) || (item.photoAsset && !photoSources.has(item.photoAsset)))
+          throw new Error("当前页有图片资源缺失，请重新上传后再导出。");
+        const size = itemSize(item), img = await loadImage(itemSource(item)),
           iw = (pageW * item.width) / 100,
-          ih = (iw * m.h) / m.w;
+          ih = (iw * size.h) / size.w;
         x.save();
         x.translate(
           left + (pageW * item.x) / 100,
@@ -926,7 +1076,7 @@ $("#export-btn").onclick = async () => {
       x.fillStyle = "#8f7a55";
       x.textAlign = "center";
       x.fillText(
-        String(state.spread * 2 + side + 1).padStart(2, "0"),
+        String(journal.spread * 2 + side + 1).padStart(2, "0"),
         left + pageW / 2,
         H - margin - 22,
       );
@@ -937,12 +1087,12 @@ $("#export-btn").onclick = async () => {
     const url = URL.createObjectURL(blob),
       a = document.createElement("a");
     a.href = url;
-    a.download = `${state.name.replace(/[\\/:*?"<>|]/g, "_")}-${state.spread * 2 + 1}-${state.spread * 2 + 2}.png`;
+    a.download = `${journal.name.replace(/[\\/:*?"<>|]/g, "_")}-${journal.spread * 2 + 1}-${journal.spread * 2 + 2}.png`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    toast("这一页的故事，已经珍藏为 PNG。");
-  } catch {
-    toast("导出暂时失败，请稍后重试。");
+    toast("这一页的故事，已经珍藏为高清 PNG。");
+  } catch (error) {
+    toast(error.message || "导出暂时失败，请稍后重试。");
   } finally {
     b.disabled = false;
   }
@@ -960,14 +1110,3 @@ for (const dialog of $$("dialog"))
         dialog.close();
     }
   });
-setTimeout(() => {
-  try {
-    const rendered = renderDimensionalMaterials();
-    for (const [id, src] of Object.entries(rendered))
-      materials.get(id).src = src;
-    if (state && !$("#editor").classList.contains("hidden")) {
-      renderSpread();
-      renderMaterials();
-    }
-  } catch {}
-}, 700);

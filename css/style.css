@@ -136,12 +136,14 @@ svg {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 12px;
+  background: #f3ebdd;
+  box-shadow: 0 2px 8px #4c392319, inset 0 1px #fff8;
   color: #847252;
 }
 .brand-icon svg {
-  width: 25px;
-  height: 25px;
+  width: 35px;
+  height: 35px;
 }
 .brand small {
   display: block;

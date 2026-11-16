@@ -49,5 +49,5 @@ http
     }
   })
   .listen(port, "127.0.0.1", () =>
-    console.log(`拾光书室 http://127.0.0.1:${port}`),
+    console.log(`复古手帐 http://127.0.0.1:${port}`),
   );
