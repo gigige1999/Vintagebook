@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ece5d8" />
+    <title>拾光书室 · The Keepsake Atelier</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='5' width='44' height='54' rx='4' fill='%2354503b'/%3E%3Crect x='17' y='12' width='30' height='40' rx='2' fill='none' stroke='%23c1a474'/%3E%3Cpath d='M25 36q7-18 14-9q-5 11-14 9' fill='%23c1a474'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="./css/atelier.css" />
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three.module.js" } }
+    </script>
+  </head>
+  <body>
+    <svg
+      class="icon-defs"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <symbol id="i-book" viewBox="0 0 24 24">
+          <path
+            d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"
+          />
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+          <path d="M4 12h16m-6-6 6 6-6 6" />
+        </symbol>
+        <symbol id="i-close" viewBox="0 0 24 24">
+          <path d="m6 6 12 12M6 18 18 6" />
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24">
+          <path d="M12 5v14M5 12h14" />
+        </symbol>
+        <symbol id="i-undo" viewBox="0 0 24 24">
+          <path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 0 14" />
+        </symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24">
+          <path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7" />
+        </symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24">
+          <path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6" />
+        </symbol>
+        <symbol id="i-layer" viewBox="0 0 24 24">
+          <path d="m12 3 10 5-10 5L2 8l10-5Zm-10 9 10 5 10-5M2 16l10 5 10-5" />
+        </symbol>
+        <symbol id="i-rotate" viewBox="0 0 24 24">
+          <path d="M20 10a8 8 0 1 0-2 8M20 3v7h-7" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <path d="m5 12 4 4L19 6" />
+        </symbol>
+        <symbol id="i-leaf" viewBox="0 0 24 24">
+          <path d="M5 19C-1 7 11 2 21 3c0 12-7 20-16 16Zm0 0L16 8" />
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 24 24">
+          <path d="M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <section id="home" class="home">
+      <header class="home-header">
+        <a class="brand" href="./" aria-label="拾光书室首页"
+          ><span class="brand-icon"
+            ><svg><use href="#i-book" /></svg></span
+          ><span>拾光书室<small>THE KEEPSAKE ATELIER</small></span></a
+        >
+        <span class="header-note">一本书，安放你的碎片时光。</span>
+        <button id="resume-btn" class="text-button hidden">
+          继续上次的手账 <span>↗</span>
+        </button>
+      </header>
+      <div class="desk-introduction">
+        <div class="eyebrow">THE ATELIER · A DESK OF YOUR OWN</div>
+        <h1>书桌已经为你铺好。</h1>
+        <p>点开一本书，收藏今天的小小心动。</p>
+      </div>
+      <div class="desk-selection-note" aria-live="polite">
+        <span id="chosen-name">森林来信</span>
+        <span id="chosen-sub">橄榄绿 · 植物烫金</span>
+      </div>
+      <div class="desk-stage" id="desk-stage">
+        <canvas
+          id="desk-canvas"
+          aria-label="摆着五本复古手账与古董物件的三维书桌"
+        ></canvas>
+        <div class="stage-vignette"></div>
+        <div class="desk-caption">
+          <span>THE WRITING DESK</span><span>Est. 1893</span>
+        </div>
+        <div id="scene-loading" class="scene-loading">正在铺好书桌…</div>
+      </div>
+      <div class="book-selector">
+        <div class="selector-heading">
+          <span>挑一本，故事从这里开始</span><span>01 — 05</span>
+        </div>
+        <div id="book-options" class="book-options"></div>
+      </div>
+      <footer class="home-footer">
+        <span>MADE FOR THE ART OF SLOW LIVING</span
+        ><span>纸张 · 拼贴 · 珍藏</span
+        ><button id="about-btn" class="text-button">
+          关于这间书室 <span>↗</span>
+        </button>
+      </footer>
+    </section>
+
+    <section id="editor" class="editor hidden">
+      <header class="editor-header">
+        <button id="back-home" class="brand brand-button" title="回到书桌">
+          <span class="brand-icon"
+            ><svg><use href="#i-book" /></svg></span
+          ><span>拾光书室<small>THE KEEPSAKE ATELIER</small></span>
+        </button>
+        <div class="journal-title">
+          <input
+            id="journal-name"
+            aria-label="手账名称"
+            maxlength="32"
+            value="我的拾光手记"
+          /><span id="save-status">已保存</span>
+        </div>
+        <div class="header-actions">
+          <button id="undo-btn" class="icon-button" title="撤销 Ctrl / ⌘ Z">
+            <svg><use href="#i-undo" /></svg></button
+          ><button
+            id="redo-btn"
+            class="icon-button redo"
+            title="重做 Ctrl / ⌘ Shift Z"
+          >
+            <svg><use href="#i-undo" /></svg></button
+          ><span class="divider"></span
+          ><button id="paper-btn" class="text-button">换张纸</button
+          ><button id="export-btn" class="small-primary">
+            <svg><use href="#i-download" /></svg>珍藏此页
+          </button>
+        </div>
+      </header>
+      <aside class="materials-panel">
+        <div class="panel-heading">
+          <div class="eyebrow">THE LITTLE COLLECTION</div>
+          <h2>素材抽屉 <span id="material-count"></span></h2>
+          <p>一件小物，一段故事。</p>
+        </div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24">
+            <circle cx="10" cy="10" r="6" />
+            <path d="m15 15 5 5" /></svg
+          ><input
+            id="material-search"
+            placeholder="找一点心动的小东西"
+            aria-label="搜索素材"
+          />
+        </div>
+        <div
+          id="category-tabs"
+          class="category-tabs"
+          aria-label="素材分类"
+        ></div>
+        <div id="material-grid" class="material-grid"></div>
+        <button id="upload-btn" class="upload-button">
+          <svg><use href="#i-upload" /></svg
+          ><span>放入自己的照片<small>让回忆有一个位置</small></span
+          ><span>+</span>
+        </button>
+        <input
+          id="photo-input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          class="hidden"
+        />
+      </aside>
+      <main class="workbench">
+        <div class="workbench-top">
+          <div>
+            <span class="eyebrow">YOUR PRIVATE PAPER WORLD</span>
+            <h2 id="workbench-book">森林来信</h2>
+          </div>
+          <div class="workbench-hint">
+            <span class="hint-dot"></span>点击素材贴上去，也可以直接拖入书页
+          </div>
+        </div>
+        <div class="book-space" id="book-space">
+          <div class="desk-letter" aria-hidden="true">
+            <span>Dear memories,</span
+            ><i>Some things deserve<br />to be kept forever.</i>
+          </div>
+          <div class="desk-props" id="desk-props" aria-hidden="true"></div>
+          <div class="open-book" id="open-book-stage">
+            <div class="book-ribbon"></div>
+            <div class="book-cover"></div>
+            <div class="page-stack left-stack"></div>
+            <div class="page-stack right-stack"></div>
+            <div class="spread" id="spread">
+              <div class="journal-page left-page" data-side="0">
+                <div class="page-surface"></div>
+                <div class="page-elements"></div>
+                <span class="page-number"></span>
+              </div>
+              <div class="journal-page right-page" data-side="1">
+                <div class="page-surface"></div>
+                <div class="page-elements"></div>
+                <span class="page-number"></span>
+              </div>
+              <div class="book-gutter"></div>
+            </div>
+          </div>
+          <div class="floating-tools hidden" id="element-tools">
+            <button data-action="edit" title="编辑文字或放入照片">编辑</button>
+            <button
+              data-action="frame"
+              class="hidden"
+              title="保留照片，切换模板样式"
+            >
+              换模板
+            </button>
+            <button data-action="rotate" title="旋转 15°">
+              <svg><use href="#i-rotate" /></svg></button
+            ><button data-action="smaller" title="缩小">−</button
+            ><button data-action="larger" title="放大">+</button
+            ><button data-action="forward" title="移到最上层">
+              <svg><use href="#i-layer" /></svg></button
+            ><button data-action="copy" title="复制">复制</button
+            ><button data-action="delete" title="删除">
+              <svg><use href="#i-trash" /></svg>
+            </button>
+          </div>
+        </div>
+        <div class="page-navigation">
+          <button id="prev-page" class="page-arrow" aria-label="上一组书页">
+            ←
+          </button>
+          <div>
+            <span id="page-indicator">01 — 02</span
+            ><small id="page-total">共 2 页 · 每一页都值得留住</small>
+          </div>
+          <button id="next-page" class="page-arrow" aria-label="下一组书页">
+            →</button
+          ><span class="nav-divider"></span
+          ><button id="add-page" class="text-button">
+            <svg><use href="#i-plus" /></svg>添一页故事
+          </button>
+        </div>
+        <div class="workbench-bottom">
+          <span
+            ><kbd>Delete</kbd> 移除 · <kbd>⌘ Z</kbd> 撤销 · 拖动角点缩放</span
+          >
+          <div class="zoom-controls">
+            <button id="zoom-out" aria-label="缩小书本">−</button
+            ><span id="zoom-level">100%</span
+            ><button id="zoom-in" aria-label="放大书本">+</button>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <dialog id="paper-dialog" class="paper-dialog">
+      <form method="dialog">
+        <button class="dialog-close icon-button" aria-label="关闭">
+          <svg><use href="#i-close" /></svg>
+        </button>
+      </form>
+      <div class="eyebrow">THE PAPER LIBRARY · 12 TEXTURES</div>
+      <h2 id="paper-title">故事，落在什么纸上？</h2>
+      <p>摸不到的纸，也想认真做出它的温度。</p>
+      <div id="paper-options" class="paper-options"></div>
+      <div class="paper-dialog-footer">
+        <span id="paper-description"></span
+        ><button id="confirm-paper" class="primary-button">
+          开始收藏 <svg><use href="#i-arrow" /></svg>
+        </button>
+      </div>
+    </dialog>
+    <dialog id="photo-dialog" class="photo-dialog">
+      <form method="dialog">
+        <button class="dialog-close icon-button" aria-label="关闭照片模板">
+          <svg><use href="#i-close" /></svg>
+        </button>
+      </form>
+      <div class="eyebrow">THE PHOTO CABINET · 9 KEEPSAKE FRAMES</div>
+      <h2 id="photo-dialog-title">为回忆，挑一个相框。</h2>
+      <p>先选一个模板，再放入自己的照片；以后也可以随时换框。</p>
+      <div
+        id="photo-templates"
+        class="photo-templates"
+        aria-label="照片模板"
+      ></div>
+      <button id="replace-photo" class="photo-upload-choice">
+        <svg><use href="#i-upload" /></svg>选择／更换照片
+      </button>
+      <div class="photo-dialog-footer">
+        <span id="photo-frame-description"></span>
+        <button id="confirm-photo" class="primary-button">
+          选择照片 <svg><use href="#i-arrow" /></svg>
+        </button>
+      </div>
+    </dialog>
+    <dialog id="text-dialog" class="text-dialog">
+      <form method="dialog">
+        <button class="dialog-close icon-button" aria-label="关闭">
+          <svg><use href="#i-close" /></svg>
+        </button>
+      </form>
+      <div class="eyebrow">A NOTE TO REMEMBER</div>
+      <h2>写下一点心情</h2>
+      <textarea
+        id="note-text"
+        maxlength="160"
+        rows="5"
+        placeholder="今天值得记住的事……"
+        aria-label="手写条文字"
+      ></textarea
+      ><button id="confirm-text" class="primary-button">
+        留在纸上 <svg><use href="#i-check" /></svg>
+      </button>
+    </dialog>
+    <dialog id="about-dialog" class="about-dialog">
+      <form method="dialog">
+        <button class="dialog-close icon-button" aria-label="关闭">
+          <svg><use href="#i-close" /></svg>
+        </button>
+      </form>
+      <div class="eyebrow">WELCOME TO THE ATELIER</div>
+      <h2>给慢下来的日子，<br />留一个位置。</h2>
+      <p>
+        拾光书室是一张安静的复古书桌。挑选封皮与纸张，把花、邮票、手写条和自己的照片，贴成只属于你的手记。
+      </p>
+      <p>
+        点击或拖入素材；选中后可旋转、缩放、复制或调整层级。双击手写条编辑文字，双击照片框放入照片。添加书页后，可在底部翻页。
+      </p>
+      <p class="about-fine">
+        创作仅保存在当前浏览器本地，不会上传服务器。清除浏览器数据会丢失手账，请用「珍藏此页」导出留存。
+      </p>
+      <button id="close-about" class="primary-button">知道了</button>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
